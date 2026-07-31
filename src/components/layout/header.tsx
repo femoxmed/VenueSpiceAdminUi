@@ -13,7 +13,7 @@ export function Header() {
     <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="flex h-20 items-center justify-between px-6 lg:px-8">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">EventBox Admin</h1>
+          <h1 className="text-lg font-semibold text-slate-900">Venue Spice Admin</h1>
           <p className="text-sm text-slate-500">Manage organizations, events, ticket sales, referrals, and payments.</p>
         </div>
 

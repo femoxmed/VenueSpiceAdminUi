@@ -82,8 +82,8 @@ export function LoginPage() {
 				<div className='mb-8'>
 					<div className='mb-5 rounded-2xl bg-slate-950 px-6 py-5'>
 						<img
-							src='/src/assets/event_box_logo.png'
-							alt='EventBox'
+							src='/src/assets/venue_spice_logo.svg'
+							alt='Venue Spice'
 							className='mx-auto h-11 w-auto object-contain'
 						/>
 					</div>

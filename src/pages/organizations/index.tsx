@@ -263,7 +263,7 @@ export function OrganizationsPage() {
 		<section>
 			<PageHeader
 				title='Organizations'
-				description='Vendor accounts and tenant boundaries for EventBox.'
+				description='Vendor accounts and tenant boundaries for Venue Spice.'
 				action={
 					<button
 						type='button'

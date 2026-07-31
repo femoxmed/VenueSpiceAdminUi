@@ -133,8 +133,8 @@ export function Sidebar() {
 		<aside className='hidden w-72 shrink-0 border-r border-primary-20 bg-white lg:block'>
 			<div className='flex h-20 items-center bg-slate-950 px-6'>
 				<img
-					src='/src/assets/event_box_logo.png'
-					alt='EventBox'
+					src='/src/assets/venue_spice_logo.svg'
+					alt='Venue Spice'
 					className='h-10 w-auto object-contain'
 				/>
 			</div>
