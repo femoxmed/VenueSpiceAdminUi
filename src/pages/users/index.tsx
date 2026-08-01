@@ -131,6 +131,7 @@ export function UsersPage() {
 						<option value='org_admin'>Vendor Admins</option>
 						<option value='org_staff'>Vendor Staff</option>
 						<option value='agent'>Agents</option>
+						<option value='writer'>Authors</option>
 						<option value='customer'>Customers</option>
 						<option value='admin'>Legacy Admins</option>
 						<option value='super_admin'>Super Admins</option>
@@ -173,6 +174,7 @@ export function UsersPage() {
 											| 'agent'
 											| 'customer'
 											| 'admin'
+											| 'writer'
 											| 'user',
 										isActive: true,
 									});
@@ -244,6 +246,7 @@ export function UsersPage() {
 						<option value='org_admin'>Vendor Admin</option>
 						<option value='org_staff'>Vendor Staff</option>
 						<option value='agent'>Agent</option>
+						<option value='writer'>Author</option>
 						<option value='customer'>Customer</option>
 						<option value='admin'>Legacy Admin</option>
 						<option value='user'>Legacy User</option>
@@ -300,6 +303,7 @@ export function UsersPage() {
 											| 'agent'
 											| 'customer'
 											| 'admin'
+											| 'writer'
 											| 'user',
 									};
 
@@ -380,6 +384,7 @@ export function UsersPage() {
 						<option value='org_admin'>Vendor Admin</option>
 						<option value='org_staff'>Vendor Staff</option>
 						<option value='agent'>Agent</option>
+						<option value='writer'>Author</option>
 						<option value='customer'>Customer</option>
 						<option value='admin'>Legacy Admin</option>
 						<option value='user'>Legacy User</option>

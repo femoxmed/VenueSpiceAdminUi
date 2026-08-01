@@ -123,7 +123,7 @@ export const router = createBrowserRouter([
 			{
 				path: 'blogs',
 				element: (
-					<RoleGuard roles={[Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN]}>
+					<RoleGuard roles={[Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN, Role.WRITER]}>
 						<BlogsPage />
 					</RoleGuard>
 				),

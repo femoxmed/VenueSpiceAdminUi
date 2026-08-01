@@ -20,7 +20,7 @@ export type CreateUserPayload = {
 	fullName: string;
 	email: string;
 	password: string;
-	role: 'super_admin' | 'platform_admin' | 'org_admin' | 'org_staff' | 'agent' | 'customer' | 'admin' | 'user';
+	role: 'super_admin' | 'platform_admin' | 'org_admin' | 'org_staff' | 'agent' | 'customer' | 'admin' | 'writer' | 'user';
 	isActive?: boolean;
 };
 

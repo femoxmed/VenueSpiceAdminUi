@@ -63,7 +63,7 @@ export function BlogsPage() {
 				<div><p className='font-semibold text-slate-900'>{row.title}</p><p className='text-xs text-slate-500'>{row.category}</p></div>
 			</div>
 		)},
-		{ key: 'author', header: 'Written by', render: (row) => row.author?.fullName || 'Aquzera Editorial' },
+		{ key: 'author', header: 'Written by', render: (row) => row.author?.fullName || 'Venue Spice Editorial' },
 		{ key: 'status', header: 'Status', render: (row) => <span className='badge bg-blue-50 capitalize text-blue-700'>{row.status}</span> },
 		{ key: 'read', header: 'Read time', render: (row) => `${row.readTimeMinutes} min` },
 		{ key: 'actions', header: '', render: (row) => (
@@ -76,7 +76,7 @@ export function BlogsPage() {
 	], [actions.remove]);
 
 	return <section className='space-y-6'>
-		<PageHeader title='Blog CMS' description='Shape thoughtful stories around water, wellness, design, and daily living.' />
+		<PageHeader title='Blog CMS' description='Create and manage Venue Spice stories for event organizers, vendors, and attendees.' />
 		<DataTable rows={data} columns={columns} searchPlaceholder='Search stories or categories' actions={
 			<button onClick={() => setOpen(true)} className='flex items-center gap-2 rounded-xl bg-secondary px-4 py-2 text-sm font-medium text-white'><Plus size={16} /> New story</button>
 		} />

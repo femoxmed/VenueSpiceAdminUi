@@ -74,7 +74,7 @@ const items = [
 		to: '/blogs',
 		label: 'Blog CMS',
 		icon: Newspaper,
-		roles: [Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN],
+		roles: [Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN, Role.WRITER],
 	},
 	{
 		to: '/refunds',
