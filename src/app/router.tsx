@@ -17,6 +17,7 @@ import { UsersPage } from '@/pages/users';
 import { UserDetailPage } from '@/pages/users/[id]';
 import { QueuesPage } from '@/pages/queues';
 import { AuditLogsPage } from '@/pages/audit-logs';
+import { PlatformSettingsPage } from '@/pages/platform-settings';
 import { ProductsPage } from '@/pages/products';
 import { ProductCreatePage } from '@/pages/products/create';
 import { ProductDetailPage } from '@/pages/products/[id]';
@@ -205,6 +206,14 @@ export const router = createBrowserRouter([
 				element: (
 					<RoleGuard roles={[Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN]}>
 						<AuditLogsPage />
+					</RoleGuard>
+				),
+			},
+			{
+				path: 'platform-settings',
+				element: (
+					<RoleGuard roles={superAdminRoles}>
+						<PlatformSettingsPage />
 					</RoleGuard>
 				),
 			},

@@ -16,6 +16,7 @@ import {
 	Newspaper,
 	Wrench,
 	ShieldCheck,
+	Settings,
 } from 'lucide-react';
 import { authStore } from '@/lib/auth-store';
 import { Role } from '@/lib/roles';
@@ -123,6 +124,12 @@ const items = [
 		label: 'Audit Logs',
 		icon: ShieldCheck,
 		roles: [Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN],
+	},
+	{
+		to: '/platform-settings',
+		label: 'Settings',
+		icon: Settings,
+		roles: [Role.SUPER_ADMIN],
 	},
 ];
 
