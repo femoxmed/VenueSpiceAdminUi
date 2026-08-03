@@ -6,6 +6,9 @@ export type PricingSettings = {
 	paymentProcessingFeePercent: number;
 	paymentProcessingFeeFixed: number;
 	defaultFeePayer: 'buyer' | 'organizer';
+	stripeAutomaticTaxEnabled: boolean;
+	stripeTaxCode: string;
+	stripeTaxBehavior: 'exclusive' | 'inclusive' | 'unspecified';
 };
 
 export type PlatformSetting = {

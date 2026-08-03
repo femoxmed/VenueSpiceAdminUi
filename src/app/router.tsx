@@ -8,6 +8,7 @@ import { EventDetailPage } from '@/pages/events/[id]';
 import { AgentsPage } from '@/pages/agents';
 import { OrdersPage } from '@/pages/orders';
 import { RevenuePage } from '@/pages/revenue';
+import { TransactionsPage } from '@/pages/transactions';
 import { RefundsPage } from '@/pages/refunds';
 import { SupportTicketsPage } from '@/pages/support-tickets';
 import { SupportTicketDetailPage } from '@/pages/support-tickets/[id]';
@@ -142,6 +143,14 @@ export const router = createBrowserRouter([
 				element: (
 					<RoleGuard roles={ticketingAdminRoles}>
 						<RevenuePage />
+					</RoleGuard>
+				),
+			},
+			{
+				path: 'transactions',
+				element: (
+					<RoleGuard roles={ticketingAdminRoles}>
+						<TransactionsPage />
 					</RoleGuard>
 				),
 			},

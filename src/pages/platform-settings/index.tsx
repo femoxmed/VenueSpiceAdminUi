@@ -10,6 +10,9 @@ const initialForm: PricingSettings = {
 	paymentProcessingFeePercent: 0.029,
 	paymentProcessingFeeFixed: 0.3,
 	defaultFeePayer: 'buyer',
+	stripeAutomaticTaxEnabled: true,
+	stripeTaxCode: '',
+	stripeTaxBehavior: 'exclusive',
 };
 
 export function PlatformSettingsPage() {
@@ -90,12 +93,55 @@ export function PlatformSettingsPage() {
 					</label>
 				</div>
 
+				<div className='mt-8 border-t border-slate-100 pt-6'>
+					<h2 className='text-lg font-semibold text-slate-950'>Stripe Tax</h2>
+					<p className='mt-1 text-sm text-slate-500'>Controls used when creating Stripe Checkout sessions for ticket purchases.</p>
+					<div className='mt-5 grid gap-5 md:grid-cols-2'>
+						<label className='flex items-start gap-3 rounded-lg border border-slate-200 p-4 md:col-span-2'>
+							<input
+								type='checkbox'
+								checked={form.stripeAutomaticTaxEnabled}
+								onChange={(event) => setForm((current) => ({ ...current, stripeAutomaticTaxEnabled: event.target.checked }))}
+								className='mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/20'
+							/>
+							<span>
+								<span className='block text-sm font-medium text-slate-700'>Enable Stripe Automatic Tax</span>
+								<span className='mt-1 block text-xs text-slate-500'>Stripe will collect the buyer billing address in Checkout and calculate tax where your Stripe account is registered/configured.</span>
+							</span>
+						</label>
+						<label className='block'>
+							<span className='text-sm font-medium text-slate-700'>Stripe tax code</span>
+							<input
+								value={form.stripeTaxCode}
+								onChange={(event) => setForm((current) => ({ ...current, stripeTaxCode: event.target.value }))}
+								placeholder='Optional, e.g. txcd_...'
+								className='mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10'
+							/>
+							<span className='mt-1 block text-xs text-slate-500'>Leave blank to let Stripe use your default product tax behavior.</span>
+						</label>
+						<label className='block'>
+							<span className='text-sm font-medium text-slate-700'>Tax behavior</span>
+							<select
+								value={form.stripeTaxBehavior}
+								onChange={(event) => setForm((current) => ({ ...current, stripeTaxBehavior: event.target.value as PricingSettings['stripeTaxBehavior'] }))}
+								className='mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10'>
+								<option value='exclusive'>Exclusive: tax added on top</option>
+								<option value='inclusive'>Inclusive: price already includes tax</option>
+								<option value='unspecified'>Unspecified: do not send tax behavior</option>
+							</select>
+						</label>
+					</div>
+				</div>
+
 				<div className='mt-6 rounded-lg bg-slate-50 p-4 text-sm text-slate-600'>
 					<p>
 						Current Venue Spice fee: <strong>{(form.venueSpiceFeePercent * 100).toFixed(2)}% + ${form.venueSpiceFeeFixed.toFixed(2)}</strong> per paid ticket.
 					</p>
 					<p className='mt-1'>
 						Processing estimate: <strong>{(form.paymentProcessingFeePercent * 100).toFixed(2)}% + ${form.paymentProcessingFeeFixed.toFixed(2)}</strong> per order.
+					</p>
+					<p className='mt-1'>
+						Stripe Tax: <strong>{form.stripeAutomaticTaxEnabled ? `enabled, ${form.stripeTaxBehavior}` : 'disabled'}</strong>{form.stripeTaxCode ? ` with tax code ${form.stripeTaxCode}` : ''}.
 					</p>
 				</div>
 

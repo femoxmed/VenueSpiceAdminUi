@@ -6,6 +6,7 @@ import {
 	Server,
 	Receipt,
 	Wallet,
+	CreditCard,
 	LifeBuoy,
 	BarChart3,
 	Bell,
@@ -87,6 +88,12 @@ const items = [
 		to: '/revenue',
 		label: 'Revenue',
 		icon: Wallet,
+		roles: [Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN, Role.ORG_ADMIN],
+	},
+	{
+		to: '/transactions',
+		label: 'Transactions',
+		icon: CreditCard,
 		roles: [Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN, Role.ORG_ADMIN],
 	},
 	{
