@@ -32,4 +32,10 @@ export type OtpChallengeResponse = {
   message: string;
 };
 
-export type LoginResponse = AuthSessionResponse | OtpChallengeResponse;
+export type EmailVerificationRequiredResponse = {
+  requiresEmailVerification: true;
+  email: string;
+  message: string;
+};
+
+export type LoginResponse = AuthSessionResponse | OtpChallengeResponse | EmailVerificationRequiredResponse;

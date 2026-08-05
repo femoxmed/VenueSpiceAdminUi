@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataTable, type ColumnDef } from '@/components/shared/data-table';
@@ -7,6 +8,38 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { useToast } from '@/components/shared/toast-provider';
 import { useCreateUser, useUsers, useUpdateUser } from '@/features/users/hooks';
 import type { UserRow, CreateUserPayload } from '@/features/users/api';
+
+function PasswordField({
+	placeholder,
+	value,
+	onChange,
+}: {
+	placeholder: string;
+	value: string;
+	onChange: (value: string) => void;
+}) {
+	const [showPassword, setShowPassword] = useState(false);
+
+	return (
+		<div className='relative'>
+			<input
+				type={showPassword ? 'text' : 'password'}
+				className='w-full rounded-xl border border-slate-200 px-3 py-2 pr-10 text-sm outline-none transition focus:border-secondary'
+				placeholder={placeholder}
+				value={value}
+				onChange={(event) => onChange(event.target.value)}
+			/>
+			<button
+				type='button'
+				aria-label={showPassword ? 'Hide password' : 'Show password'}
+				title={showPassword ? 'Hide password' : 'Show password'}
+				onClick={() => setShowPassword((current) => !current)}
+				className='absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-500 transition hover:bg-slate-100 hover:text-secondary'>
+				{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+			</button>
+		</div>
+	);
+}
 
 export function UsersPage() {
 	const navigate = useNavigate();
@@ -225,14 +258,13 @@ export function UsersPage() {
 							setForm((current) => ({ ...current, email: event.target.value }))
 						}
 					/>
-					<input
-						className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm'
+					<PasswordField
 						placeholder='Temporary password'
 						value={form.password}
-						onChange={(event) =>
+						onChange={(value) =>
 							setForm((current) => ({
 								...current,
-								password: event.target.value,
+								password: value,
 							}))
 						}
 					/>
@@ -363,14 +395,13 @@ export function UsersPage() {
 							setForm((current) => ({ ...current, email: event.target.value }))
 						}
 					/>
-					<input
-						className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm'
+					<PasswordField
 						placeholder='New password (leave empty to keep current)'
 						value={form.password}
-						onChange={(event) =>
+						onChange={(value) =>
 							setForm((current) => ({
 								...current,
-								password: event.target.value,
+								password: value,
 							}))
 						}
 					/>

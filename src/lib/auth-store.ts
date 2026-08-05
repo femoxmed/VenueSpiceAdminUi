@@ -20,12 +20,27 @@ export const authStore = {
   },
   getUser(): AuthUser | null {
     const raw = localStorage.getItem(USER_KEY) ?? localStorage.getItem(LEGACY_USER_KEY);
-    return raw ? JSON.parse(raw) as AuthUser : null;
+    if (!raw || raw === "undefined" || raw === "null") {
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem(LEGACY_USER_KEY);
+      return null;
+    }
+    try {
+      return JSON.parse(raw) as AuthUser;
+    } catch {
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem(LEGACY_USER_KEY);
+      return null;
+    }
   },
   getRole() {
     return this.getUser()?.role ?? null;
   },
   setSession(token: string, user: AuthUser, refreshToken?: string | null) {
+    if (!token || !user?.id) {
+      this.clear();
+      throw new Error("Unable to start session. Please sign in again.");
+    }
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     localStorage.removeItem(LEGACY_TOKEN_KEY);

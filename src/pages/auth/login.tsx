@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import * as yup from 'yup';
 import { useLogin, useVerifyAdminOtp } from '@/features/auth/hooks';
@@ -27,6 +28,7 @@ const otpSchema = yup.object({
 export function LoginPage() {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
+	const [showPassword, setShowPassword] = useState(false);
 	const [otpEmail, setOtpEmail] = useState('');
 	const [code, setCode] = useState('');
 	const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -70,6 +72,9 @@ export function LoginPage() {
 		if ('requiresOtp' in result) {
 			setOtpEmail(result.email);
 			return;
+		}
+		if ('requiresEmailVerification' in result) {
+			throw new Error(result.message || 'Please verify this account before signing in.');
 		}
 		authStore.setSession(result.accessToken, result.user, result.refreshToken);
 		clearGuestCartItems();
@@ -139,15 +144,25 @@ export function LoginPage() {
 								<label className='mb-2 block text-sm font-medium text-slate-700'>
 									Password
 								</label>
-								<input
-									type='password'
-									className='w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-secondary'
-									value={password}
-									onChange={(event) => {
-										setPassword(event.target.value);
-										setValidationErrors((current) => ({ ...current, password: '' }));
-									}}
-								/>
+								<div className='relative'>
+									<input
+										type={showPassword ? 'text' : 'password'}
+										className='w-full rounded-2xl border border-slate-200 px-4 py-3 pr-11 outline-none transition focus:border-secondary'
+										value={password}
+										onChange={(event) => {
+											setPassword(event.target.value);
+											setValidationErrors((current) => ({ ...current, password: '' }));
+										}}
+									/>
+									<button
+										type='button'
+										aria-label={showPassword ? 'Hide password' : 'Show password'}
+										title={showPassword ? 'Hide password' : 'Show password'}
+										onClick={() => setShowPassword((current) => !current)}
+										className='absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-500 transition hover:bg-slate-100 hover:text-secondary'>
+										{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+									</button>
+								</div>
 								{validationErrors.password ? (
 									<p className='mt-2 text-sm text-rose-600'>{validationErrors.password}</p>
 								) : null}
