@@ -115,6 +115,7 @@ function currency(value: number | string, currencyCode = 'USD') {
 	return new Intl.NumberFormat('en-US', {
 		style: 'currency',
 		currency: currencyCode || 'USD',
+		currencyDisplay: 'code',
 		minimumFractionDigits: 2,
 		maximumFractionDigits: 2,
 	}).format(Number(value || 0));

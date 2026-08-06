@@ -85,12 +85,13 @@ export function LoginPage() {
 		<div className='flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#2960EC22,transparent_30%),linear-gradient(180deg,#f8fbff_0%,#eef4ff_100%)] p-6'>
 			<div className='w-full max-w-md rounded-[28px] border border-white/60 bg-white/90 p-8 shadow-soft backdrop-blur'>
 				<div className='mb-8'>
-					<div className='mb-5 rounded-2xl bg-slate-950 px-6 py-5'>
+					<div className='mb-5 flex items-center justify-center gap-3 rounded-2xl bg-slate-950 px-6 py-5'>
 						<img
 							src='/brand/venue_spice_logo.png'
 							alt='Venue Spice'
-							className='mx-auto h-11 w-auto object-contain'
+							className='h-11 w-auto object-contain'
 						/>
+						<span className='text-2xl font-extrabold tracking-wide text-white'>Venue Spice</span>
 					</div>
 					<h1 className='mt-3 text-3xl font-semibold tracking-tight text-slate-900'>
 						{isOtpStep ? 'Enter your admin code' : 'Sign in to the admin console'}

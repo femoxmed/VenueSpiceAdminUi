@@ -4,14 +4,14 @@ export function cn(...inputs: ClassValue[]) {
 	return clsx(inputs);
 }
 
-export function currency(value: number) {
-	return new Intl.NumberFormat('en-NG', {
+export function currency(value: number | string, currencyCode = 'USD') {
+	return new Intl.NumberFormat('en-US', {
 		style: 'currency',
-		currency: 'NGN',
-		currencyDisplay: 'narrowSymbol',
-		minimumFractionDigits: 0,
-		maximumFractionDigits: 4,
-	}).format(value);
+		currency: currencyCode || 'USD',
+		currencyDisplay: 'code',
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
+	}).format(Number(value || 0));
 }
 
 export function formatDate(dateString: string) {

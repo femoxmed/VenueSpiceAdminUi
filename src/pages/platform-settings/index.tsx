@@ -135,10 +135,10 @@ export function PlatformSettingsPage() {
 
 				<div className='mt-6 rounded-lg bg-slate-50 p-4 text-sm text-slate-600'>
 					<p>
-						Current Venue Spice fee: <strong>{(form.venueSpiceFeePercent * 100).toFixed(2)}% + ${form.venueSpiceFeeFixed.toFixed(2)}</strong> per paid ticket.
+						Current Venue Spice fee: <strong>{(form.venueSpiceFeePercent * 100).toFixed(2)}% + USD {form.venueSpiceFeeFixed.toFixed(2)}</strong> per paid ticket.
 					</p>
 					<p className='mt-1'>
-						Processing estimate: <strong>{(form.paymentProcessingFeePercent * 100).toFixed(2)}% + ${form.paymentProcessingFeeFixed.toFixed(2)}</strong> per order.
+						Processing estimate: <strong>{(form.paymentProcessingFeePercent * 100).toFixed(2)}% + USD {form.paymentProcessingFeeFixed.toFixed(2)}</strong> per order.
 					</p>
 					<p className='mt-1'>
 						Stripe Tax: <strong>{form.stripeAutomaticTaxEnabled ? `enabled, ${form.stripeTaxBehavior}` : 'disabled'}</strong>{form.stripeTaxCode ? ` with tax code ${form.stripeTaxCode}` : ''}.

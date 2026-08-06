@@ -145,12 +145,13 @@ export function Sidebar() {
 
 	return (
 		<aside className='hidden w-72 shrink-0 border-r border-primary-20 bg-white lg:block'>
-			<div className='flex h-20 items-center bg-slate-950 px-6'>
+			<div className='flex h-20 items-center gap-3 bg-slate-950 px-6'>
 				<img
 					src='/brand/venue_spice_logo.png'
 					alt='Venue Spice'
 					className='h-10 w-auto object-contain'
 				/>
+				<span className='text-xl font-extrabold tracking-wide text-white'>Venue Spice</span>
 			</div>
 
 			<nav className='space-y-1 px-4 py-4'>
