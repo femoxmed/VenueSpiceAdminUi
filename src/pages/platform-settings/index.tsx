@@ -89,6 +89,21 @@ export function PlatformSettingsPage() {
 							step='1'
 							onChange={(value) => setForm((current) => ({ ...current, organizerPayoutHoldDays: value }))}
 						/>
+						<label className='flex items-start gap-3 rounded-lg border border-slate-200 p-4 md:col-span-2'>
+							<input
+								type='checkbox'
+								checked={form.organizerPayoutHoldDays === 0}
+								onChange={(event) => setForm((current) => ({
+									...current,
+									organizerPayoutHoldDays: event.target.checked ? 0 : Math.max(current.organizerPayoutHoldDays || 3, 3),
+								}))}
+								className='mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/20'
+							/>
+							<span>
+								<span className='block text-sm font-medium text-slate-700'>Make organizer funds available immediately</span>
+								<span className='mt-1 block text-xs text-slate-500'>When enabled, paid organizer earnings become withdrawable immediately instead of waiting after the event ends.</span>
+							</span>
+						</label>
 						<label className='block md:col-span-2'>
 						<span className='text-sm font-medium text-slate-700'>Default fee payer</span>
 						<select
