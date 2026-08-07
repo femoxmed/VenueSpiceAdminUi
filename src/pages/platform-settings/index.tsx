@@ -9,6 +9,7 @@ const initialForm: PricingSettings = {
 	venueSpiceFeeFixed: 1.29,
 	paymentProcessingFeePercent: 0.029,
 	paymentProcessingFeeFixed: 0.3,
+	organizerPayoutHoldDays: 3,
 	defaultFeePayer: 'buyer',
 	stripeAutomaticTaxEnabled: true,
 	stripeTaxCode: '',
@@ -74,14 +75,21 @@ export function PlatformSettingsPage() {
 						step='0.001'
 						onChange={(value) => setForm((current) => ({ ...current, paymentProcessingFeePercent: value }))}
 					/>
-					<NumberField
-						label='Processing fixed fee per order'
-						helper='Example: 0.30'
-						value={form.paymentProcessingFeeFixed}
-						step='0.01'
-						onChange={(value) => setForm((current) => ({ ...current, paymentProcessingFeeFixed: value }))}
-					/>
-					<label className='block md:col-span-2'>
+						<NumberField
+							label='Processing fixed fee per order'
+							helper='Example: 0.30'
+							value={form.paymentProcessingFeeFixed}
+							step='0.01'
+							onChange={(value) => setForm((current) => ({ ...current, paymentProcessingFeeFixed: value }))}
+						/>
+						<NumberField
+							label='Organizer payout hold days'
+							helper='Days after event end before organizer earnings become withdrawable.'
+							value={form.organizerPayoutHoldDays}
+							step='1'
+							onChange={(value) => setForm((current) => ({ ...current, organizerPayoutHoldDays: value }))}
+						/>
+						<label className='block md:col-span-2'>
 						<span className='text-sm font-medium text-slate-700'>Default fee payer</span>
 						<select
 							value={form.defaultFeePayer}
@@ -137,9 +145,12 @@ export function PlatformSettingsPage() {
 					<p>
 						Current Venue Spice fee: <strong>{(form.venueSpiceFeePercent * 100).toFixed(2)}% + USD {form.venueSpiceFeeFixed.toFixed(2)}</strong> per paid ticket.
 					</p>
-					<p className='mt-1'>
-						Processing estimate: <strong>{(form.paymentProcessingFeePercent * 100).toFixed(2)}% + USD {form.paymentProcessingFeeFixed.toFixed(2)}</strong> per order.
-					</p>
+						<p className='mt-1'>
+							Processing estimate: <strong>{(form.paymentProcessingFeePercent * 100).toFixed(2)}% + USD {form.paymentProcessingFeeFixed.toFixed(2)}</strong> per order.
+						</p>
+						<p className='mt-1'>
+							Organizer payout hold: <strong>{form.organizerPayoutHoldDays} day{form.organizerPayoutHoldDays === 1 ? '' : 's'} after event end</strong>.
+						</p>
 					<p className='mt-1'>
 						Stripe Tax: <strong>{form.stripeAutomaticTaxEnabled ? `enabled, ${form.stripeTaxBehavior}` : 'disabled'}</strong>{form.stripeTaxCode ? ` with tax code ${form.stripeTaxCode}` : ''}.
 					</p>

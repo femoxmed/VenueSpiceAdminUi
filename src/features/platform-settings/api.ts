@@ -5,6 +5,7 @@ export type PricingSettings = {
 	venueSpiceFeeFixed: number;
 	paymentProcessingFeePercent: number;
 	paymentProcessingFeeFixed: number;
+	organizerPayoutHoldDays: number;
 	defaultFeePayer: 'buyer' | 'organizer';
 	stripeAutomaticTaxEnabled: boolean;
 	stripeTaxCode: string;
