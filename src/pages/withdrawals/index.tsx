@@ -186,10 +186,14 @@ export function WithdrawalsPage() {
 							<Detail label='Requested' value={formatDate(selected.createdAt)} />
 						</div>
 						<DetailBlock label='Organizer note' value={selected.requesterNote || 'No note provided.'} />
-						<DetailBlock label='Admin note' value={selected.adminNote || 'No admin note yet.'} />
 						{selected.status === 'failed' ? (
-							<DetailBlock label='Failure reason' value={selected.adminNote || String(selected.metadata?.errorMessage || 'Payout failed.')} />
-						) : null}
+							<>
+								<DetailBlock label='Failure reason' value={adminWithdrawalFailureReason(selected)} />
+								<DetailBlock label='Organizer-facing message' value={organizerWithdrawalMessage(selected)} />
+							</>
+						) : (
+							<DetailBlock label='Admin note' value={selected.adminNote || 'No admin note yet.'} />
+						)}
 						{reviewMode && reviewMode !== 'pay' ? (
 							<label className='block'>
 								<span className='font-medium text-slate-900'>Review note</span>
@@ -211,6 +215,16 @@ export function WithdrawalsPage() {
 			</Modal>
 		</section>
 	);
+}
+
+function adminWithdrawalFailureReason(request: WithdrawalRequest) {
+	const value = request.metadata?.adminMessage ?? request.metadata?.stripeErrorMessage ?? request.metadata?.errorMessage ?? request.adminNote;
+	return typeof value === 'string' && value.trim() ? value : 'Payout failed.';
+}
+
+function organizerWithdrawalMessage(request: WithdrawalRequest) {
+	const value = request.metadata?.userMessage ?? request.adminNote ?? request.metadata?.errorMessage;
+	return typeof value === 'string' && value.trim() ? value : 'No organizer message yet.';
 }
 
 function sumStripeBalance(items?: Array<{ amount: number; currency: string }>) {
