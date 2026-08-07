@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
 	approveWithdrawalRequest,
+	getStripeBalance,
 	getWithdrawalRequests,
 	payWithdrawalRequest,
 	rejectWithdrawalRequest,
@@ -13,12 +14,20 @@ export function useWithdrawalRequests(status?: string) {
 	});
 }
 
+export function useStripeBalance() {
+	return useQuery({
+		queryKey: ['stripe-balance'],
+		queryFn: getStripeBalance,
+	});
+}
+
 export function useApproveWithdrawalRequest() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: ({ id, note }: { id: string; note?: string }) => approveWithdrawalRequest(id, note),
 		onSuccess: () => {
 			void queryClient.invalidateQueries({ queryKey: ['withdrawal-requests'] });
+			void queryClient.invalidateQueries({ queryKey: ['stripe-balance'] });
 		},
 	});
 }
@@ -39,6 +48,7 @@ export function usePayWithdrawalRequest() {
 		mutationFn: payWithdrawalRequest,
 		onSuccess: () => {
 			void queryClient.invalidateQueries({ queryKey: ['withdrawal-requests'] });
+			void queryClient.invalidateQueries({ queryKey: ['stripe-balance'] });
 		},
 	});
 }

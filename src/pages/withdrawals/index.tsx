@@ -10,6 +10,7 @@ import {
 	useApproveWithdrawalRequest,
 	usePayWithdrawalRequest,
 	useRejectWithdrawalRequest,
+	useStripeBalance,
 	useWithdrawalRequests,
 } from '@/features/withdrawals/hooks';
 import { currency, formatDate } from '@/lib/utils';
@@ -18,6 +19,7 @@ type ReviewMode = 'approve' | 'reject' | 'pay';
 
 export function WithdrawalsPage() {
 	const { data: requests = [], isLoading } = useWithdrawalRequests();
+	const stripeBalance = useStripeBalance();
 	const approve = useApproveWithdrawalRequest();
 	const reject = useRejectWithdrawalRequest();
 	const pay = usePayWithdrawalRequest();
@@ -30,6 +32,8 @@ export function WithdrawalsPage() {
 	const paid = requests.filter((request) => request.status === 'paid');
 	const pendingAmount = pending.reduce((sum, request) => sum + Number(request.amount || 0), 0);
 	const paidAmount = paid.reduce((sum, request) => sum + Number(request.amount || 0), 0);
+	const stripeAvailable = sumStripeBalance(stripeBalance.data?.available);
+	const stripePending = sumStripeBalance(stripeBalance.data?.pending);
 
 	const columns: ColumnDef<WithdrawalRequest>[] = [
 		{
@@ -131,9 +135,9 @@ export function WithdrawalsPage() {
 			/>
 			<div className='grid gap-5 md:grid-cols-2 xl:grid-cols-4'>
 				<MetricCard title='Pending Review' value={String(pending.length)} helper={currency(pendingAmount)} icon={<Clock3 size={22} />} />
-				<MetricCard title='Approved' value={String(approved.length)} helper='Ready for payout' icon={<CheckCircle2 size={22} />} />
+				<MetricCard title='Stripe Available' value={currency(stripeAvailable)} helper={stripeBalance.isLoading ? 'Loading Stripe balance' : 'Platform transfer balance'} icon={<DollarSign size={22} />} />
+				<MetricCard title='Stripe Pending' value={currency(stripePending)} helper='Not yet available for transfer' icon={<Clock3 size={22} />} />
 				<MetricCard title='Paid Requests' value={String(paid.length)} helper={currency(paidAmount)} icon={<Send size={22} />} />
-				<MetricCard title='Total Requests' value={String(requests.length)} helper='Manual payout queue' icon={<DollarSign size={22} />} />
 			</div>
 
 			<DataTable
@@ -183,6 +187,9 @@ export function WithdrawalsPage() {
 						</div>
 						<DetailBlock label='Organizer note' value={selected.requesterNote || 'No note provided.'} />
 						<DetailBlock label='Admin note' value={selected.adminNote || 'No admin note yet.'} />
+						{selected.status === 'failed' ? (
+							<DetailBlock label='Failure reason' value={selected.adminNote || String(selected.metadata?.errorMessage || 'Payout failed.')} />
+						) : null}
 						{reviewMode && reviewMode !== 'pay' ? (
 							<label className='block'>
 								<span className='font-medium text-slate-900'>Review note</span>
@@ -196,7 +203,7 @@ export function WithdrawalsPage() {
 						) : null}
 						{reviewMode === 'pay' ? (
 							<p className='rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800'>
-								Paying this request will attempt a Stripe transfer and mark the selected organizer ledger entries as paid out.
+								Paying this request will attempt a Stripe transfer and mark the selected organizer ledger entries as paid out. Current Stripe available balance is {currency(stripeAvailable)}.
 							</p>
 						) : null}
 					</div>
@@ -204,6 +211,12 @@ export function WithdrawalsPage() {
 			</Modal>
 		</section>
 	);
+}
+
+function sumStripeBalance(items?: Array<{ amount: number; currency: string }>) {
+	return (items ?? [])
+		.filter((item) => item.currency === 'USD')
+		.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 }
 
 function Detail({ label, value }: { label: string; value: string }) {

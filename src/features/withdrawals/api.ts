@@ -19,6 +19,7 @@ export type WithdrawalRequest = {
 		contactEmail?: string | null;
 	};
 	sourceEntryIds?: string[] | null;
+	metadata?: Record<string, unknown> | null;
 	createdAt: string;
 	updatedAt: string;
 	reviewedAt?: string | null;
@@ -26,9 +27,18 @@ export type WithdrawalRequest = {
 	failedAt?: string | null;
 };
 
+export type StripeBalance = {
+	available: Array<{ amount: number; currency: string; sourceTypes?: Record<string, number> }>;
+	pending: Array<{ amount: number; currency: string; sourceTypes?: Record<string, number> }>;
+};
+
 export function getWithdrawalRequests(status?: string) {
 	const query = status ? `?status=${encodeURIComponent(status)}` : '';
 	return apiClient<WithdrawalRequest[]>(`/organizer-sales/admin/withdrawal-requests${query}`);
+}
+
+export function getStripeBalance() {
+	return apiClient<StripeBalance>('/organizer-sales/admin/stripe-balance');
 }
 
 export function approveWithdrawalRequest(id: string, note?: string) {
