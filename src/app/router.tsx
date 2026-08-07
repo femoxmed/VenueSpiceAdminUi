@@ -10,6 +10,7 @@ import { OrdersPage } from '@/pages/orders';
 import { RevenuePage } from '@/pages/revenue';
 import { TransactionsPage } from '@/pages/transactions';
 import { RefundsPage } from '@/pages/refunds';
+import { WithdrawalsPage } from '@/pages/withdrawals';
 import { SupportTicketsPage } from '@/pages/support-tickets';
 import { SupportTicketDetailPage } from '@/pages/support-tickets/[id]';
 import { AnalyticsPage } from '@/pages/analytics';
@@ -32,6 +33,7 @@ import { RoleGuard } from '@/features/auth/role-guard';
 import { Role } from '@/lib/roles';
 
 const superAdminRoles = [Role.SUPER_ADMIN];
+const platformAdminRoles = [Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN];
 const ticketingAdminRoles = [Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN, Role.ORG_ADMIN];
 const ticketingStaffRoles = [Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN, Role.ORG_ADMIN, Role.ORG_STAFF];
 
@@ -135,6 +137,14 @@ export const router = createBrowserRouter([
 				element: (
 					<RoleGuard roles={ticketingAdminRoles}>
 						<RefundsPage />
+					</RoleGuard>
+				),
+			},
+			{
+				path: 'withdrawals',
+				element: (
+					<RoleGuard roles={platformAdminRoles}>
+						<WithdrawalsPage />
 					</RoleGuard>
 				),
 			},

@@ -6,6 +6,7 @@ import {
 	Server,
 	Receipt,
 	Wallet,
+	Banknote,
 	CreditCard,
 	LifeBuoy,
 	BarChart3,
@@ -83,6 +84,12 @@ const items = [
 		label: 'Refunds',
 		icon: Receipt,
 		roles: [Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN, Role.ORG_ADMIN],
+	},
+	{
+		to: '/withdrawals',
+		label: 'Withdrawals',
+		icon: Banknote,
+		roles: [Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN],
 	},
 	{
 		to: '/revenue',
