@@ -13,10 +13,14 @@ import {
 	UsersRound,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Modal } from '@/components/shared/modal';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { useAgents, useEvents, useOrganization } from '@/features/ticketing/hooks';
+import { useToast } from '@/components/shared/toast-provider';
+import { usePlatformSettings } from '@/features/platform-settings/hooks';
+import { useAgents, useEvents, useOrganization, useUpdateOrganizationDeal } from '@/features/ticketing/hooks';
 import type { Organization } from '@/features/ticketing/api';
 
 const typeCopy: Record<
@@ -123,6 +127,8 @@ export function OrganizationDetailPage() {
 				</div>
 			</div>
 
+			{type === 'organization' ? <OrganizerDealCard organization={organization} /> : null}
+
 			<div className='card p-6'>
 				<div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
 					<div>
@@ -211,10 +217,192 @@ export function OrganizationDetailPage() {
 					<DetailItem label='Stripe payouts enabled' value={organization.stripePayoutsEnabled ? 'Yes' : 'No'} />
 					<DetailItem label='Stripe details submitted' value={organization.stripeDetailsSubmitted ? 'Yes' : 'No'} />
 					<DetailItem label='Stripe onboarding completed' value={formatDateTime(organization.stripeOnboardingCompletedAt)} />
+					<DetailItem label='Deal service fee' value={formatDealSummary(organization)} />
+					<DetailItem label='Deal starts' value={formatDateTime(organization.dealStartsAt)} />
+					<DetailItem label='Deal expires' value={formatDateTime(organization.dealEndsAt)} />
 					<DetailItem label='Created at' value={formatDateTime(organization.createdAt)} />
 				</div>
 			</div>
 		</section>
+	);
+}
+
+function OrganizerDealCard({ organization }: { organization: Organization }) {
+	const { push } = useToast();
+	const settingsQuery = usePlatformSettings();
+	const updateDeal = useUpdateOrganizationDeal();
+	const normalPricing = settingsQuery.data?.pricing;
+	const [feePercent, setFeePercent] = useState(() => decimalToPercentInput(organization.dealVenueSpiceFeePercent));
+	const [feeFixed, setFeeFixed] = useState(() => moneyInput(organization.dealVenueSpiceFeeFixed));
+	const [startsAt, setStartsAt] = useState(() => toDateTimeLocal(organization.dealStartsAt) || toDateTimeLocal(new Date().toISOString()));
+	const [endsAt, setEndsAt] = useState(() => toDateTimeLocal(organization.dealEndsAt));
+	const [notifyOrganizer, setNotifyOrganizer] = useState(true);
+	const [confirmOpen, setConfirmOpen] = useState(false);
+
+	const dealStatus = getDealStatus(organization);
+	const normalFeeLabel = normalPricing
+		? `${formatFeePercent(Number(normalPricing.venueSpiceFeePercent))} + ${formatCurrency(Number(normalPricing.venueSpiceFeeFixed))} per paid ticket`
+		: 'Loading normal pricing...';
+	const newFeeLabel = `${formatFeePercent(Number(feePercent) / 100)} + ${formatCurrency(Number(feeFixed || 0))} per paid ticket`;
+
+	function validate() {
+		const percent = Number(feePercent);
+		const fixed = Number(feeFixed);
+		if (!Number.isFinite(percent) || percent < 0) return 'Enter a valid service fee percentage.';
+		if (!Number.isFinite(fixed) || fixed < 0) return 'Enter a valid fixed fee.';
+		if (!startsAt || !endsAt) return 'Select both start and expiry dates.';
+		const start = new Date(startsAt);
+		const end = new Date(endsAt);
+		if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return 'Select valid dates.';
+		if (start >= end) return 'Expiry date must be after the start date.';
+		return '';
+	}
+
+	function submitForConfirmation() {
+		const message = validate();
+		if (message) {
+			push({ title: 'Check deal settings', description: message, variant: 'error' });
+			return;
+		}
+		setConfirmOpen(true);
+	}
+
+	async function saveDeal() {
+		try {
+			await updateDeal.mutateAsync({
+				id: organization.id,
+				payload: {
+					venueSpiceFeePercent: Number(feePercent) / 100,
+					venueSpiceFeeFixed: Number(feeFixed),
+					startsAt: new Date(startsAt).toISOString(),
+					endsAt: new Date(endsAt).toISOString(),
+					notifyOrganizer,
+				},
+			});
+			setConfirmOpen(false);
+			push({
+				title: 'Organizer deal saved',
+				description: notifyOrganizer ? 'The organizer notification email has been queued.' : 'The deal is now active for eligible checkout windows.',
+			});
+		} catch (error) {
+			push({
+				title: 'Deal could not be saved',
+				description: error instanceof Error ? error.message : 'Please review the deal settings and try again.',
+				variant: 'error',
+			});
+		}
+	}
+
+	return (
+		<div className='card p-6'>
+			<div className='flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between'>
+				<div>
+					<div className='flex flex-wrap items-center gap-2'>
+						<h3 className='text-lg font-semibold text-slate-950'>Organizer Welcome Deal</h3>
+						<StatusBadge value={dealStatus} />
+					</div>
+					<p className='mt-1 max-w-2xl text-sm text-slate-500'>
+						Set a temporary custom Venue Spice service fee for this event planner. The deal applies automatically during checkout while the date window is active.
+					</p>
+				</div>
+				<div className='rounded-lg border border-primary-10 bg-primary-10/50 px-4 py-3 text-sm text-slate-700'>
+					<p className='font-semibold text-slate-950'>Normal fee</p>
+					<p>{normalFeeLabel}</p>
+				</div>
+			</div>
+
+			<div className='mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+				<label className='space-y-2'>
+					<span className='text-sm font-semibold text-slate-700'>Discounted service fee (%)</span>
+					<input
+						type='number'
+						min='0'
+						step='0.01'
+						value={feePercent}
+						onChange={(event) => setFeePercent(event.target.value)}
+						className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10'
+						placeholder='2.5'
+					/>
+				</label>
+				<label className='space-y-2'>
+					<span className='text-sm font-semibold text-slate-700'>Fixed fee per paid ticket ($)</span>
+					<input
+						type='number'
+						min='0'
+						step='0.01'
+						value={feeFixed}
+						onChange={(event) => setFeeFixed(event.target.value)}
+						className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10'
+						placeholder='0.99'
+					/>
+				</label>
+				<label className='space-y-2'>
+					<span className='text-sm font-semibold text-slate-700'>Start date</span>
+					<input
+						type='datetime-local'
+						value={startsAt}
+						onChange={(event) => setStartsAt(event.target.value)}
+						className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10'
+					/>
+				</label>
+				<label className='space-y-2'>
+					<span className='text-sm font-semibold text-slate-700'>Expiry date</span>
+					<input
+						type='datetime-local'
+						value={endsAt}
+						onChange={(event) => setEndsAt(event.target.value)}
+						className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10'
+					/>
+				</label>
+			</div>
+
+			<div className='mt-5 flex flex-col gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between'>
+				<label className='flex items-start gap-3 text-sm text-slate-700'>
+					<input
+						type='checkbox'
+						checked={notifyOrganizer}
+						onChange={(event) => setNotifyOrganizer(event.target.checked)}
+						className='mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary'
+					/>
+					<span>
+						<span className='font-semibold text-slate-900'>Notify organizer by email</span>
+						<br />
+						Send a friendly note showing the normal fee, discounted fee, start date, and expiry date.
+					</span>
+				</label>
+				<button
+					type='button'
+					onClick={submitForConfirmation}
+					className='inline-flex justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-70'>
+					Review & Save Deal
+				</button>
+			</div>
+
+			<Modal
+				open={confirmOpen}
+				title='Confirm organizer deal'
+				description='This deal will affect checkout fee calculations for this organizer during the selected period.'
+				onClose={() => setConfirmOpen(false)}
+				footer={
+					<>
+						<button type='button' onClick={() => setConfirmOpen(false)} className='rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50'>
+							Cancel
+						</button>
+						<button type='button' onClick={saveDeal} disabled={updateDeal.isPending} className='rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-primary-70 disabled:cursor-not-allowed disabled:opacity-60'>
+							{updateDeal.isPending ? 'Saving...' : 'Confirm & Save'}
+						</button>
+					</>
+				}>
+				<div className='grid gap-4 sm:grid-cols-2'>
+					<DetailItem label='Organizer' value={organization.name} />
+					<DetailItem label='Normal Venue Spice fee' value={normalFeeLabel} />
+					<DetailItem label='Discounted Venue Spice fee' value={newFeeLabel} />
+					<DetailItem label='Starts' value={formatDateTime(new Date(startsAt).toISOString())} />
+					<DetailItem label='Expires' value={formatDateTime(new Date(endsAt).toISOString())} />
+					<DetailItem label='Email organizer' value={notifyOrganizer ? 'Yes' : 'No'} />
+				</div>
+			</Modal>
+		</div>
 	);
 }
 
@@ -322,4 +510,54 @@ function formatNumber(value?: number | null) {
 function formatPercent(value?: number | string | null) {
 	if (value === null || value === undefined || value === '') return null;
 	return `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+}
+
+function formatFeePercent(value?: number | string | null) {
+	if (value === null || value === undefined || value === '') return '0%';
+	return `${(Number(value) * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+}
+
+function formatCurrency(value?: number | string | null) {
+	return new Intl.NumberFormat('en-US', {
+		style: 'currency',
+		currency: 'USD',
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
+	}).format(Number(value ?? 0));
+}
+
+function decimalToPercentInput(value?: number | string | null) {
+	const numeric = Number(value);
+	if (!Number.isFinite(numeric)) return '';
+	return String(Number((numeric * 100).toFixed(4)));
+}
+
+function moneyInput(value?: number | string | null) {
+	const numeric = Number(value);
+	if (!Number.isFinite(numeric)) return '';
+	return String(Number(numeric.toFixed(2)));
+}
+
+function toDateTimeLocal(value?: string | null) {
+	if (!value) return '';
+	const date = new Date(value);
+	if (!Number.isFinite(date.getTime())) return '';
+	const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+	return local.toISOString().slice(0, 16);
+}
+
+function getDealStatus(organization: Organization) {
+	if (!organization.dealStartsAt || !organization.dealEndsAt) return 'no deal';
+	const now = Date.now();
+	const startsAt = new Date(organization.dealStartsAt).getTime();
+	const endsAt = new Date(organization.dealEndsAt).getTime();
+	if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) return 'invalid deal';
+	if (now < startsAt) return 'upcoming deal';
+	if (now > endsAt) return 'expired deal';
+	return 'active deal';
+}
+
+function formatDealSummary(organization: Organization) {
+	if (organization.dealVenueSpiceFeePercent === null || organization.dealVenueSpiceFeePercent === undefined) return null;
+	return `${formatFeePercent(organization.dealVenueSpiceFeePercent)} + ${formatCurrency(organization.dealVenueSpiceFeeFixed)} per paid ticket`;
 }

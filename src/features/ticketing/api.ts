@@ -25,6 +25,10 @@ export type Organization = {
 	stripePayoutsEnabled?: boolean;
 	stripeDetailsSubmitted?: boolean;
 	stripeOnboardingCompletedAt?: string | null;
+	dealVenueSpiceFeePercent?: number | string | null;
+	dealVenueSpiceFeeFixed?: number | string | null;
+	dealStartsAt?: string | null;
+	dealEndsAt?: string | null;
 	createdAt: string;
 };
 
@@ -87,6 +91,11 @@ export const ticketingApi = {
 			method: 'PATCH',
 			body: JSON.stringify(payload),
 		}),
+	updateOrganizationDeal: (id: string, payload: OrganizationDealPayload) =>
+		apiClient<Organization>(`/organizations/${id}/deal`, {
+			method: 'PATCH',
+			body: JSON.stringify(payload),
+		}),
 	events: (organizationId?: string) =>
 		apiClient<Event[]>('/events', { query: { organizationId } }),
 	createEvent: (payload: CreateEventPayload) =>
@@ -100,6 +109,14 @@ export const ticketingApi = {
 			body: JSON.stringify({ status }),
 		}),
 	agents: () => apiClient<Agent[]>('/agents'),
+};
+
+export type OrganizationDealPayload = {
+	venueSpiceFeePercent: number;
+	venueSpiceFeeFixed: number;
+	startsAt: string;
+	endsAt: string;
+	notifyOrganizer?: boolean;
 };
 
 export type OrganizationPayload = {

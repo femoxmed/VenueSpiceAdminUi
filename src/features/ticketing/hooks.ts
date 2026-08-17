@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ticketingApi, type CreateEventPayload, type Event, type OrganizationPayload } from './api';
+import { ticketingApi, type CreateEventPayload, type Event, type OrganizationDealPayload, type OrganizationPayload } from './api';
 
 export function useOrganizations() {
 	return useQuery({
@@ -33,6 +33,19 @@ export function useUpdateOrganization() {
 		mutationFn: ({ id, payload }: { id: string; payload: Partial<OrganizationPayload> }) =>
 			ticketingApi.updateOrganization(id, payload),
 		onSuccess: () => queryClient.invalidateQueries({ queryKey: ['organizations'] }),
+	});
+}
+
+export function useUpdateOrganizationDeal() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ id, payload }: { id: string; payload: OrganizationDealPayload }) =>
+			ticketingApi.updateOrganizationDeal(id, payload),
+		onSuccess: (_data, variables) => {
+			void queryClient.invalidateQueries({ queryKey: ['organizations'] });
+			void queryClient.invalidateQueries({ queryKey: ['organizations', variables.id] });
+		},
 	});
 }
 
