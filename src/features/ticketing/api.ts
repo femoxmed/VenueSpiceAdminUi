@@ -4,6 +4,7 @@ export type Organization = {
 	id: string;
 	name: string;
 	slug: string;
+	organizerUsername?: string | null;
 	status: string;
 	type?: 'vendor' | 'organization' | 'influencer';
 	ownerUserId?: string | null;

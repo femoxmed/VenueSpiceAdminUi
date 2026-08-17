@@ -10,6 +10,7 @@ import {
 	Phone,
 	Radio,
 	Store,
+	UserRound,
 	UsersRound,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -103,6 +104,9 @@ export function OrganizationDetailPage() {
 									{organization.name}
 								</h2>
 								<p className='mt-1 break-all text-sm text-slate-500'>/{organization.slug}</p>
+								{organization.organizerUsername ? (
+									<p className='mt-1 break-all text-sm font-medium text-primary'>vsp/{organization.organizerUsername}</p>
+								) : null}
 								<div className='mt-4 flex flex-wrap gap-2'>
 									<StatusBadge value={type} />
 									<StatusBadge value={organization.status} />
@@ -112,6 +116,7 @@ export function OrganizationDetailPage() {
 					</div>
 
 					<div className='grid gap-3 p-6 text-sm'>
+						<IconLine icon={<UserRound size={16} />} label='Organizer username' value={organization.organizerUsername} />
 						<IconLine icon={<Mail size={16} />} label='Contact email' value={organization.contactEmail} />
 						<IconLine icon={<Phone size={16} />} label='Contact phone' value={organization.contactPhone} />
 						<IconLine icon={<MapPin size={16} />} label='Country' value={organization.country} />
@@ -181,6 +186,7 @@ export function OrganizationDetailPage() {
 					description='Business identity and location fields for ticket ownership and admin scoping.'
 					items={[
 						['Business category', organization.businessCategory],
+						['Organizer username', organization.organizerUsername],
 						['Country', organization.country],
 						['Postal code', organization.postalCode],
 						['Owner user ID', organization.ownerUserId],
@@ -197,6 +203,7 @@ export function OrganizationDetailPage() {
 					<DetailItem label='Organization ID' value={organization.id} />
 					<DetailItem label='Name' value={organization.name} />
 					<DetailItem label='Slug' value={organization.slug} />
+					<DetailItem label='Organizer username' value={organization.organizerUsername} />
 					<DetailItem label='Type' value={formatLabel(type)} />
 					<DetailItem label='Status' value={organization.status} />
 					<DetailItem label='Owner user ID' value={organization.ownerUserId} />
@@ -397,8 +404,8 @@ function OrganizerDealCard({ organization }: { organization: Organization }) {
 					<DetailItem label='Organizer' value={organization.name} />
 					<DetailItem label='Normal Venue Spice fee' value={normalFeeLabel} />
 					<DetailItem label='Discounted Venue Spice fee' value={newFeeLabel} />
-					<DetailItem label='Starts' value={formatDateTime(new Date(startsAt).toISOString())} />
-					<DetailItem label='Expires' value={formatDateTime(new Date(endsAt).toISOString())} />
+					<DetailItem label='Starts' value={formatDateTimeFromLocalInput(startsAt)} />
+					<DetailItem label='Expires' value={formatDateTimeFromLocalInput(endsAt)} />
 					<DetailItem label='Email organizer' value={notifyOrganizer ? 'Yes' : 'No'} />
 				</div>
 			</Modal>
@@ -495,7 +502,16 @@ function DetailItem({
 
 function formatDateTime(value?: string | null) {
 	if (!value) return null;
-	return new Date(value).toLocaleString();
+	const date = new Date(value);
+	if (!Number.isFinite(date.getTime())) return null;
+	return date.toLocaleString();
+}
+
+function formatDateTimeFromLocalInput(value?: string | null) {
+	if (!value) return null;
+	const date = new Date(value);
+	if (!Number.isFinite(date.getTime())) return null;
+	return date.toLocaleString();
 }
 
 function formatLabel(value: string) {
