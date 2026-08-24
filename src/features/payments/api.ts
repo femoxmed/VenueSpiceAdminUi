@@ -25,8 +25,10 @@ export type PaymentIntentRow = {
   } | null;
 };
 
-export function getPaymentIntents() {
-  return apiClient<PaymentIntentRow[]>('/payments/intents');
+export function getPaymentIntents(status?: string) {
+  return apiClient<PaymentIntentRow[]>('/payments/intents', {
+    query: status && status !== 'all' ? { status } : undefined,
+  });
 }
 
 export function createPaymentIntent(payload: { invoiceId: string; idempotencyKey?: string }) {

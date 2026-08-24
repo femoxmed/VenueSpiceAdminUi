@@ -1,4 +1,5 @@
 import { ExternalLink, ReceiptText, Ticket } from 'lucide-react';
+import { useState } from 'react';
 import { DataTable, type ColumnDef } from '@/components/shared/data-table';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
@@ -65,7 +66,8 @@ const columns: ColumnDef<TicketOrderRow>[] = [
 ];
 
 export function OrdersPage() {
-	const { data: rows = [] } = useOrders();
+	const [statusFilter, setStatusFilter] = useState('paid');
+	const { data: rows = [] } = useOrders(statusFilter);
 
 	return (
 		<section className='space-y-6'>
@@ -78,6 +80,19 @@ export function OrdersPage() {
 				rows={rows}
 				columns={columns}
 				searchPlaceholder='Search orders by ID, customer, event, or status'
+				filters={
+					<select
+						value={statusFilter}
+						onChange={(event) => setStatusFilter(event.target.value)}
+						className='rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-secondary'>
+						<option value='all'>All statuses</option>
+						<option value='paid'>Paid</option>
+						<option value='pending'>Pending</option>
+						<option value='refunded'>Refunded</option>
+						<option value='cancelled'>Cancelled</option>
+					</select>
+				}
+				actions={<span className='text-sm text-slate-500'>{rows.length} orders</span>}
 			/>
 
 			<div className='grid gap-4'>

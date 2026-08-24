@@ -3,6 +3,7 @@ import {
 	CalendarDays,
 	CircleDollarSign,
 	Link2,
+	ReceiptText,
 	ShieldCheck,
 	Ticket,
 	TrendingUp,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 import { MetricCard } from '@/components/shared/metric-card';
 import { PageHeader } from '@/components/shared/page-header';
+import { useOrders } from '@/features/orders/hooks';
 import { useAgents, useEvents, useOrganizations } from '@/features/ticketing/hooks';
 import { currency } from '@/lib/utils';
 
@@ -21,6 +23,7 @@ export function DashboardPage() {
 	} = useOrganizations();
 	const { data: events = [] } = useEvents();
 	const { data: agents = [] } = useAgents();
+	const { data: paidOrders = [] } = useOrders('paid');
 
 	const publishedEvents = events.filter((event) => event.status === 'published');
 	const ticketsAvailable = events.reduce(
@@ -41,16 +44,9 @@ export function DashboardPage() {
 			) ?? 0),
 		0,
 	);
-	const estimatedRevenue = events.reduce(
-		(sum, event) =>
-			sum +
-			(event.ticketTypes?.reduce(
-				(ticketSum, ticket) =>
-					ticketSum + Number(ticket.price || 0) * Number(ticket.quantitySold || 0),
-				0,
-			) ?? 0),
-		0,
-	);
+	const paidGrossVolume = paidOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+	const paidSubtotal = paidOrders.reduce((sum, order) => sum + Number(order.subtotal || 0), 0);
+	const paidTax = paidOrders.reduce((sum, order) => sum + Number(order.tax || 0), 0);
 	const referralCodes = agents.reduce(
 		(sum, agent) => sum + (agent.referralCodes?.length ?? 0),
 		0,
@@ -83,10 +79,16 @@ export function DashboardPage() {
 					icon={<Ticket size={22} />}
 				/>
 				<MetricCard
-					title='Estimated Revenue'
-					value={currency(estimatedRevenue)}
-					helper='Based on confirmed ticket sales'
+					title='Paid Gross Volume'
+					value={currency(paidGrossVolume)}
+					helper={`${paidOrders.length} paid orders`}
 					icon={<CircleDollarSign size={22} />}
+				/>
+				<MetricCard
+					title='Paid Ticket Sales'
+					value={currency(paidSubtotal)}
+					helper={`${currency(paidTax)} tax recorded`}
+					icon={<ReceiptText size={22} />}
 				/>
 				<MetricCard
 					title='Agents'

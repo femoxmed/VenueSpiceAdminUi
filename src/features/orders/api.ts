@@ -39,6 +39,8 @@ export type TicketOrderRow = {
 	}>;
 };
 
-export function getOrders() {
-	return apiClient<TicketOrderRow[]>('/ticket-orders');
+export function getOrders(status?: string) {
+	return apiClient<TicketOrderRow[]>('/ticket-orders', {
+		query: status && status !== 'all' ? { status } : undefined,
+	});
 }

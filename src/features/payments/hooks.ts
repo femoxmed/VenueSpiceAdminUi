@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createPaymentIntent, getPaymentIntents, verifyPaymentIntent } from './api';
 
-export function usePaymentIntents() {
+export function usePaymentIntents(status?: string) {
   return useQuery({
-    queryKey: ['payment-intents'],
-    queryFn: getPaymentIntents,
+    queryKey: ['payment-intents', status ?? 'all'],
+    queryFn: () => getPaymentIntents(status),
   });
 }
 

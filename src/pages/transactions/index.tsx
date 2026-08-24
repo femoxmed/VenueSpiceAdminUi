@@ -1,4 +1,5 @@
 import { CreditCard, DollarSign, ReceiptText } from 'lucide-react';
+import { useState } from 'react';
 import { DataTable, type ColumnDef } from '@/components/shared/data-table';
 import { MetricCard } from '@/components/shared/metric-card';
 import { PageHeader } from '@/components/shared/page-header';
@@ -6,7 +7,8 @@ import { usePaymentIntents } from '@/features/payments/hooks';
 import type { PaymentIntentRow } from '@/features/payments/api';
 
 export function TransactionsPage() {
-	const { data: transactions = [], isLoading } = usePaymentIntents();
+	const [statusFilter, setStatusFilter] = useState('succeeded');
+	const { data: transactions = [], isLoading } = usePaymentIntents(statusFilter);
 	const succeeded = transactions.filter((transaction) => transaction.status === 'succeeded');
 	const grossTotal = succeeded.reduce((sum, transaction) => sum + Number(transaction.total || transaction.amount || 0), 0);
 	const taxTotal = succeeded.reduce((sum, transaction) => sum + Number(transaction.tax || 0), 0);
@@ -104,6 +106,18 @@ export function TransactionsPage() {
 					columns={columns}
 					pageSize={10}
 					searchPlaceholder='Search transactions by customer, invoice, status, provider, or reference'
+					filters={
+						<select
+							value={statusFilter}
+							onChange={(event) => setStatusFilter(event.target.value)}
+							className='rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-secondary'>
+							<option value='all'>All statuses</option>
+							<option value='succeeded'>Succeeded</option>
+							<option value='initialized'>Initialized</option>
+							<option value='pending'>Pending</option>
+							<option value='failed'>Failed</option>
+						</select>
+					}
 					actions={<span className='text-sm text-slate-500'>{isLoading ? 'Loading...' : `${transactions.length} transactions`}</span>}
 				/>
 			</div>
