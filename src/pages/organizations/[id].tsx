@@ -9,6 +9,7 @@ import {
 	MapPin,
 	Phone,
 	Radio,
+	ShieldAlert,
 	Store,
 	UserRound,
 	UsersRound,
@@ -21,7 +22,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useToast } from '@/components/shared/toast-provider';
 import { usePlatformSettings } from '@/features/platform-settings/hooks';
-import { useAgents, useEvents, useOrganization, useUpdateOrganizationDeal } from '@/features/ticketing/hooks';
+import { useAgents, useEvents, useOrganization, useUpdateOrganizationDeal, useUpdateOrganizationPayoutPolicy } from '@/features/ticketing/hooks';
 import type { Organization } from '@/features/ticketing/api';
 
 const typeCopy: Record<
@@ -132,7 +133,12 @@ export function OrganizationDetailPage() {
 				</div>
 			</div>
 
-			{type === 'organization' ? <OrganizerDealCard organization={organization} /> : null}
+			{type === 'organization' ? (
+				<>
+					<OrganizerDealCard organization={organization} />
+					<OrganizerPayoutPolicyCard organization={organization} />
+				</>
+			) : null}
 
 			<div className='card p-6'>
 				<div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
@@ -227,6 +233,10 @@ export function OrganizationDetailPage() {
 					<DetailItem label='Deal service fee' value={formatDealSummary(organization)} />
 					<DetailItem label='Deal starts' value={formatDateTime(organization.dealStartsAt)} />
 					<DetailItem label='Deal expires' value={formatDateTime(organization.dealEndsAt)} />
+					<DetailItem label='Payout policy' value={formatPayoutPolicySummary(organization)} />
+					<DetailItem label='Payout privilege starts' value={formatDateTime(organization.payoutPolicyStartsAt)} />
+					<DetailItem label='Payout privilege expires' value={formatDateTime(organization.payoutPolicyEndsAt)} />
+					<DetailItem label='Payout risk accepted' value={formatDateTime(organization.payoutPolicyRefundRiskAcceptedAt)} />
 					<DetailItem label='Created at' value={formatDateTime(organization.createdAt)} />
 				</div>
 			</div>
@@ -413,6 +423,224 @@ function OrganizerDealCard({ organization }: { organization: Organization }) {
 	);
 }
 
+function OrganizerPayoutPolicyCard({ organization }: { organization: Organization }) {
+	const { push } = useToast();
+	const settingsQuery = usePlatformSettings();
+	const updatePayoutPolicy = useUpdateOrganizationPayoutPolicy();
+	const [payoutPolicy, setPayoutPolicy] = useState<NonNullable<Organization['payoutPolicy']>>(organization.payoutPolicy || 'platform_default');
+	const [delayDays, setDelayDays] = useState(() => String(organization.payoutDelayDays ?? 0));
+	const [startsAt, setStartsAt] = useState(() => toDateTimeLocal(organization.payoutPolicyStartsAt) || toDateTimeLocal(new Date().toISOString()));
+	const [endsAt, setEndsAt] = useState(() => toDateTimeLocal(organization.payoutPolicyEndsAt));
+	const [reason, setReason] = useState(organization.payoutPolicyReason || '');
+	const [notifyOrganizer, setNotifyOrganizer] = useState(true);
+	const [riskAccepted, setRiskAccepted] = useState(false);
+	const [confirmOpen, setConfirmOpen] = useState(false);
+
+	const policyStatus = getPayoutPolicyStatus(organization);
+	const platformHoldDays = Number(settingsQuery.data?.pricing?.organizerPayoutHoldDays ?? 3);
+	const normalSchedule = `${platformHoldDays} day${platformHoldDays === 1 ? '' : 's'} after event end`;
+	const selectedSchedule = formatPayoutPolicyLabel(payoutPolicy, Number(delayDays || 0));
+
+	function validate() {
+		const days = Number(delayDays);
+		if (!Number.isInteger(days) || days < 0 || days > 365) return 'Delay days must be a whole number between 0 and 365.';
+		if (!startsAt || !endsAt) return 'Select both start and expiry dates.';
+		const start = new Date(startsAt);
+		const end = new Date(endsAt);
+		if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return 'Select valid dates.';
+		if (start >= end) return 'Expiry date must be after the start date.';
+		return '';
+	}
+
+	function submitForConfirmation() {
+		const message = validate();
+		if (message) {
+			push({ title: 'Check payout privilege', description: message, variant: 'error' });
+			return;
+		}
+		setRiskAccepted(false);
+		setConfirmOpen(true);
+	}
+
+	async function savePayoutPolicy() {
+		if (!riskAccepted) {
+			push({
+				title: 'Risk acknowledgement required',
+				description: 'Confirm the organiser has been informed that refund and dispute responsibility is on them.',
+				variant: 'error',
+			});
+			return;
+		}
+		try {
+			await updatePayoutPolicy.mutateAsync({
+				id: organization.id,
+				payload: {
+					payoutPolicy,
+					payoutDelayDays: Number(delayDays),
+					startsAt: new Date(startsAt).toISOString(),
+					endsAt: new Date(endsAt).toISOString(),
+					reason,
+					refundRiskAccepted: riskAccepted,
+					notifyOrganizer,
+				},
+			});
+			setConfirmOpen(false);
+			push({
+				title: 'Payout privilege saved',
+				description: notifyOrganizer ? 'The organiser notification email has been queued.' : 'The payout privilege is now configured.',
+			});
+		} catch (error) {
+			push({
+				title: 'Payout privilege could not be saved',
+				description: error instanceof Error ? error.message : 'Please review the payout privilege and try again.',
+				variant: 'error',
+			});
+		}
+	}
+
+	return (
+		<div className='card p-6'>
+			<div className='flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between'>
+				<div>
+					<div className='flex flex-wrap items-center gap-2'>
+						<h3 className='text-lg font-semibold text-slate-950'>Organizer Payout Privilege</h3>
+						<StatusBadge value={policyStatus} />
+					</div>
+					<p className='mt-1 max-w-2xl text-sm text-slate-500'>
+						Allow selected trusted event planners to access earnings immediately, a custom number of days after payment, or a custom number of days after event end.
+					</p>
+				</div>
+				<div className='rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900'>
+					<p className='font-semibold'>Standard payout</p>
+					<p>{normalSchedule}</p>
+				</div>
+			</div>
+
+			<div className='mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+				<label className='space-y-2'>
+					<span className='text-sm font-semibold text-slate-700'>Payout policy</span>
+					<select
+						value={payoutPolicy}
+						onChange={(event) => setPayoutPolicy(event.target.value as NonNullable<Organization['payoutPolicy']>)}
+						className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10'>
+						<option value='platform_default'>Platform default</option>
+						<option value='after_payment'>After buyer payment</option>
+						<option value='after_event'>After event end</option>
+					</select>
+				</label>
+				<label className='space-y-2'>
+					<span className='text-sm font-semibold text-slate-700'>Delay days</span>
+					<input
+						type='number'
+						min='0'
+						max='365'
+						step='1'
+						value={delayDays}
+						onChange={(event) => setDelayDays(event.target.value)}
+						className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10'
+						placeholder='0'
+					/>
+				</label>
+				<label className='space-y-2'>
+					<span className='text-sm font-semibold text-slate-700'>Start date</span>
+					<input
+						type='datetime-local'
+						value={startsAt}
+						onChange={(event) => setStartsAt(event.target.value)}
+						className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10'
+					/>
+				</label>
+				<label className='space-y-2'>
+					<span className='text-sm font-semibold text-slate-700'>Expiry date</span>
+					<input
+						type='datetime-local'
+						value={endsAt}
+						onChange={(event) => setEndsAt(event.target.value)}
+						className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10'
+					/>
+				</label>
+			</div>
+
+			<label className='mt-4 block space-y-2'>
+				<span className='text-sm font-semibold text-slate-700'>Reason / internal note</span>
+				<textarea
+					value={reason}
+					onChange={(event) => setReason(event.target.value)}
+					rows={3}
+					className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10'
+					placeholder='Trusted organiser launch privilege, partner onboarding package, finance-approved exception...'
+				/>
+			</label>
+
+			<div className='mt-5 flex flex-col gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between'>
+				<label className='flex items-start gap-3 text-sm text-slate-700'>
+					<input
+						type='checkbox'
+						checked={notifyOrganizer}
+						onChange={(event) => setNotifyOrganizer(event.target.checked)}
+						className='mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary'
+					/>
+					<span>
+						<span className='font-semibold text-slate-900'>Notify organizer by email</span>
+						<br />
+						Explain the temporary payout schedule and refund/dispute responsibility.
+					</span>
+				</label>
+				<button
+					type='button'
+					onClick={submitForConfirmation}
+					className='inline-flex justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-70'>
+					Review & Save Payout Privilege
+				</button>
+			</div>
+
+			<Modal
+				open={confirmOpen}
+				title='Confirm payout privilege'
+				description='This can release organiser earnings earlier than the standard Venue Spice payout schedule.'
+				onClose={() => setConfirmOpen(false)}
+				footer={
+					<>
+						<button type='button' onClick={() => setConfirmOpen(false)} className='rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50'>
+							Cancel
+						</button>
+						<button type='button' onClick={savePayoutPolicy} disabled={updatePayoutPolicy.isPending || !riskAccepted} className='rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-primary-70 disabled:cursor-not-allowed disabled:opacity-60'>
+							{updatePayoutPolicy.isPending ? 'Saving...' : 'Confirm & Save'}
+						</button>
+					</>
+				}>
+				<div className='space-y-4'>
+					<div className='grid gap-4 sm:grid-cols-2'>
+						<DetailItem label='Organizer' value={organization.name} />
+						<DetailItem label='Standard payout timing' value={normalSchedule} />
+						<DetailItem label='New payout timing' value={selectedSchedule} />
+						<DetailItem label='Starts' value={formatDateTimeFromLocalInput(startsAt)} />
+						<DetailItem label='Expires' value={formatDateTimeFromLocalInput(endsAt)} />
+						<DetailItem label='Email organizer' value={notifyOrganizer ? 'Yes' : 'No'} />
+					</div>
+					<div className='rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950'>
+						<div className='flex gap-3'>
+							<ShieldAlert size={20} className='mt-0.5 shrink-0' />
+							<p>
+								This organiser may receive funds before the normal refund-risk period ends. Refund requests, disputes, chargebacks, cancelled events, buyer complaints, and related issue costs must be explained as their responsibility during this privilege period.
+							</p>
+						</div>
+						<label className='mt-4 flex items-start gap-3 font-semibold'>
+							<input
+								type='checkbox'
+								checked={riskAccepted}
+								onChange={(event) => setRiskAccepted(event.target.checked)}
+								className='mt-1 h-4 w-4 rounded border-amber-300 text-primary focus:ring-primary'
+							/>
+							<span>I confirm this refund and dispute responsibility has been explained and accepted.</span>
+						</label>
+					</div>
+				</div>
+			</Modal>
+		</div>
+	);
+}
+
 function TypePanel({
 	title,
 	description,
@@ -576,4 +804,33 @@ function getDealStatus(organization: Organization) {
 function formatDealSummary(organization: Organization) {
 	if (organization.dealVenueSpiceFeePercent === null || organization.dealVenueSpiceFeePercent === undefined) return null;
 	return `${formatFeePercent(organization.dealVenueSpiceFeePercent)} + ${formatCurrency(organization.dealVenueSpiceFeeFixed)} per paid ticket`;
+}
+
+function getPayoutPolicyStatus(organization: Organization) {
+	if (!organization.payoutPolicy || organization.payoutPolicy === 'platform_default') return 'platform default';
+	if (!organization.payoutPolicyStartsAt || !organization.payoutPolicyEndsAt) return 'invalid privilege';
+	const now = Date.now();
+	const startsAt = new Date(organization.payoutPolicyStartsAt).getTime();
+	const endsAt = new Date(organization.payoutPolicyEndsAt).getTime();
+	if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) return 'invalid privilege';
+	if (now < startsAt) return 'upcoming privilege';
+	if (now > endsAt) return 'expired privilege';
+	return 'active privilege';
+}
+
+function formatPayoutPolicySummary(organization: Organization) {
+	return formatPayoutPolicyLabel(organization.payoutPolicy || 'platform_default', Number(organization.payoutDelayDays ?? 0));
+}
+
+function formatPayoutPolicyLabel(policy: NonNullable<Organization['payoutPolicy']>, delayDays: number) {
+	const days = Number.isFinite(delayDays) && delayDays >= 0 ? delayDays : 0;
+	if (policy === 'platform_default') return 'Platform default';
+	if (policy === 'after_payment') {
+		return days === 0
+			? 'Immediately after buyer payment'
+			: `${days} day${days === 1 ? '' : 's'} after buyer payment`;
+	}
+	return days === 0
+		? 'Immediately after event end'
+		: `${days} day${days === 1 ? '' : 's'} after event end`;
 }

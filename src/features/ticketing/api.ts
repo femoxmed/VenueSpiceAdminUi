@@ -30,6 +30,13 @@ export type Organization = {
 	dealVenueSpiceFeeFixed?: number | string | null;
 	dealStartsAt?: string | null;
 	dealEndsAt?: string | null;
+	payoutPolicy?: 'platform_default' | 'after_payment' | 'after_event';
+	payoutDelayDays?: number | null;
+	payoutPolicyStartsAt?: string | null;
+	payoutPolicyEndsAt?: string | null;
+	payoutPolicyReason?: string | null;
+	payoutPolicyRefundRiskAcceptedAt?: string | null;
+	payoutPolicyRefundRiskAcceptedBy?: string | null;
 	createdAt: string;
 };
 
@@ -97,6 +104,11 @@ export const ticketingApi = {
 			method: 'PATCH',
 			body: JSON.stringify(payload),
 		}),
+	updateOrganizationPayoutPolicy: (id: string, payload: OrganizationPayoutPolicyPayload) =>
+		apiClient<Organization>(`/organizations/${id}/payout-policy`, {
+			method: 'PATCH',
+			body: JSON.stringify(payload),
+		}),
 	events: (organizationId?: string) =>
 		apiClient<Event[]>('/events', { query: { organizationId } }),
 	createEvent: (payload: CreateEventPayload) =>
@@ -117,6 +129,16 @@ export type OrganizationDealPayload = {
 	venueSpiceFeeFixed: number;
 	startsAt: string;
 	endsAt: string;
+	notifyOrganizer?: boolean;
+};
+
+export type OrganizationPayoutPolicyPayload = {
+	payoutPolicy: 'platform_default' | 'after_payment' | 'after_event';
+	payoutDelayDays: number;
+	startsAt: string;
+	endsAt: string;
+	reason?: string;
+	refundRiskAccepted: boolean;
 	notifyOrganizer?: boolean;
 };
 
