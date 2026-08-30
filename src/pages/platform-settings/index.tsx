@@ -14,6 +14,8 @@ const initialForm: PricingSettings = {
 	stripeAutomaticTaxEnabled: true,
 	stripeTaxCode: '',
 	stripeTaxBehavior: 'exclusive',
+	supportedTaxRegions: 'US:TX',
+	allowOrganizerManualTax: true,
 };
 
 export function PlatformSettingsPage() {
@@ -153,6 +155,28 @@ export function PlatformSettingsPage() {
 								<option value='unspecified'>Unspecified: do not send tax behavior</option>
 							</select>
 						</label>
+						<label className='block'>
+							<span className='text-sm font-medium text-slate-700'>Venue Spice tax regions</span>
+							<input
+								value={form.supportedTaxRegions}
+								onChange={(event) => setForm((current) => ({ ...current, supportedTaxRegions: event.target.value }))}
+								placeholder='US:TX'
+								className='mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10'
+							/>
+							<span className='mt-1 block text-xs text-slate-500'>Comma-separated country/state codes where Venue Spice collects tax. Example: US:TX.</span>
+						</label>
+						<label className='flex items-start gap-3 rounded-lg border border-slate-200 p-4'>
+							<input
+								type='checkbox'
+								checked={form.allowOrganizerManualTax}
+								onChange={(event) => setForm((current) => ({ ...current, allowOrganizerManualTax: event.target.checked }))}
+								className='mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/20'
+							/>
+							<span>
+								<span className='block text-sm font-medium text-slate-700'>Allow organizer manual tax</span>
+								<span className='mt-1 block text-xs text-slate-500'>Outside supported tax regions, organizers can enter a tax rate only after accepting tax responsibility.</span>
+							</span>
+						</label>
 					</div>
 				</div>
 
@@ -168,6 +192,9 @@ export function PlatformSettingsPage() {
 						</p>
 					<p className='mt-1'>
 						Stripe Tax: <strong>{form.stripeAutomaticTaxEnabled ? `enabled, ${form.stripeTaxBehavior}` : 'disabled'}</strong>{form.stripeTaxCode ? ` with tax code ${form.stripeTaxCode}` : ''}.
+					</p>
+					<p className='mt-1'>
+						Venue Spice tax regions: <strong>{form.supportedTaxRegions || 'none'}</strong>. Organizer manual tax is <strong>{form.allowOrganizerManualTax ? 'enabled' : 'disabled'}</strong>.
 					</p>
 				</div>
 

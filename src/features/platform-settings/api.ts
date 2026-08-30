@@ -10,6 +10,8 @@ export type PricingSettings = {
 	stripeAutomaticTaxEnabled: boolean;
 	stripeTaxCode: string;
 	stripeTaxBehavior: 'exclusive' | 'inclusive' | 'unspecified';
+	supportedTaxRegions: string;
+	allowOrganizerManualTax: boolean;
 };
 
 export type PlatformSetting = {
