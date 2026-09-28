@@ -45,10 +45,11 @@ export function WithdrawalsPage() {
 		},
 		{
 			key: 'organization',
-			header: 'Organizer',
+			header: 'Payee',
 			render: (row) => (
 				<div>
-					<p className='font-medium text-slate-900'>{row.organization?.name ?? 'Organizer'}</p>
+					<p className='font-medium text-slate-900'>{row.organization?.name ?? 'Payee'}</p>
+					<p className='text-xs font-medium text-indigo-600'>{isInfluencerWithdrawal(row) ? 'Influencer' : 'Organizer'}</p>
 					<p className='text-xs text-slate-500'>{row.organization?.contactEmail ?? row.requestedByEmail ?? 'No email'}</p>
 				</div>
 			),
@@ -131,7 +132,7 @@ export function WithdrawalsPage() {
 		<section className='space-y-6'>
 			<PageHeader
 				title='Withdrawals'
-				description='Review organizer withdrawal requests, check available balance snapshots, and release approved payouts.'
+				description='Review organizer and influencer withdrawal requests, check available balance snapshots, and release approved payouts.'
 			/>
 			<div className='grid gap-5 md:grid-cols-2 xl:grid-cols-4'>
 				<MetricCard title='Pending Review' value={String(pending.length)} helper={currency(pendingAmount)} icon={<Clock3 size={22} />} />
@@ -156,7 +157,7 @@ export function WithdrawalsPage() {
 					setNote('');
 				}}
 				title={reviewMode ? `${reviewMode === 'pay' ? 'Pay' : reviewMode === 'approve' ? 'Approve' : 'Reject'} withdrawal` : 'Withdrawal details'}
-				description={selected ? `${selected.organization?.name ?? 'Organizer'} requested ${currency(selected.amount, selected.currency)}` : undefined}
+				description={selected ? `${selected.organization?.name ?? 'Payee'} requested ${currency(selected.amount, selected.currency)}` : undefined}
 				footer={
 					reviewMode && selected ? (
 						<>
@@ -176,7 +177,8 @@ export function WithdrawalsPage() {
 				{selected ? (
 					<div className='space-y-4 text-sm'>
 						<div className='grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2'>
-							<Detail label='Organizer' value={selected.organization?.name ?? 'Unknown'} />
+							<Detail label='Payee type' value={isInfluencerWithdrawal(selected) ? 'Influencer' : 'Organizer'} />
+							<Detail label='Payee' value={selected.organization?.name ?? 'Unknown'} />
 							<Detail label='Requested by' value={selected.requestedByEmail ?? 'Unknown'} />
 							<Detail label='Amount' value={currency(selected.amount, selected.currency)} />
 							<Detail label='Available at request' value={currency(selected.availableBalanceSnapshot, selected.currency)} />
@@ -185,11 +187,11 @@ export function WithdrawalsPage() {
 							<Detail label='Stripe transfer' value={selected.stripeTransferId ?? 'Not paid yet'} />
 							<Detail label='Requested' value={formatDate(selected.createdAt)} />
 						</div>
-						<DetailBlock label='Organizer note' value={selected.requesterNote || 'No note provided.'} />
+						<DetailBlock label='Payee note' value={selected.requesterNote || 'No note provided.'} />
 						{selected.status === 'failed' ? (
 							<>
 								<DetailBlock label='Failure reason' value={adminWithdrawalFailureReason(selected)} />
-								<DetailBlock label='Organizer-facing message' value={organizerWithdrawalMessage(selected)} />
+								<DetailBlock label='Payee-facing message' value={organizerWithdrawalMessage(selected)} />
 							</>
 						) : (
 							<DetailBlock label='Admin note' value={selected.adminNote || 'No admin note yet.'} />
@@ -207,7 +209,9 @@ export function WithdrawalsPage() {
 						) : null}
 						{reviewMode === 'pay' ? (
 							<p className='rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800'>
-								Paying this request will attempt a Stripe transfer and mark the selected organizer ledger entries as paid out. Current Stripe available balance is {currency(stripeAvailable)}.
+								{isInfluencerWithdrawal(selected)
+									? 'Paying this request will attempt a Stripe transfer and mark the reserved influencer commissions as withdrawn.'
+									: 'Paying this request will attempt a Stripe transfer and mark the selected organizer ledger entries as paid out.'} Current Stripe available balance is {currency(stripeAvailable)}.
 							</p>
 						) : null}
 					</div>
@@ -225,6 +229,10 @@ function adminWithdrawalFailureReason(request: WithdrawalRequest) {
 function organizerWithdrawalMessage(request: WithdrawalRequest) {
 	const value = request.metadata?.userMessage ?? request.adminNote ?? request.metadata?.errorMessage;
 	return typeof value === 'string' && value.trim() ? value : 'No organizer message yet.';
+}
+
+function isInfluencerWithdrawal(request: WithdrawalRequest) {
+	return request.metadata?.beneficiaryType === 'influencer';
 }
 
 function sumStripeBalance(items?: Array<{ amount: number; currency: string }>) {
