@@ -116,6 +116,11 @@ export const ticketingApi = {
 			method: 'POST',
 			body: JSON.stringify(payload),
 		}),
+	updateEvent: (id: string, payload: { slug: string }) =>
+		apiClient<Event>(`/events/${id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(payload),
+		}),
 	updateEventStatus: (id: string, status: Event['status']) =>
 		apiClient<Event>(`/events/${id}/status`, {
 			method: 'PATCH',

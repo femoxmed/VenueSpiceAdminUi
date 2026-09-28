@@ -94,3 +94,13 @@ export function useUpdateEventStatus() {
 		onSuccess: () => queryClient.invalidateQueries({ queryKey: ['events'] }),
 	});
 }
+
+export function useUpdateEventSlug() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ id, slug }: { id: string; slug: string }) =>
+			ticketingApi.updateEvent(id, { slug }),
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: ['events'] }),
+	});
+}

@@ -2,19 +2,25 @@ import {
 	ArrowLeft,
 	CalendarDays,
 	CircleDollarSign,
+	Pencil,
 	MapPin,
 	Package,
 	ReceiptText,
 	Ticket,
 	UsersRound,
 } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Modal } from '@/components/shared/modal';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { useToast } from '@/components/shared/toast-provider';
 import { useOrders } from '@/features/orders/hooks';
 import type { TicketOrderRow } from '@/features/orders/api';
-import { useEvents } from '@/features/ticketing/hooks';
+import { useEvents, useUpdateEventSlug } from '@/features/ticketing/hooks';
 import type { Event, TicketType } from '@/features/ticketing/api';
+import { authStore } from '@/lib/auth-store';
+import { Role } from '@/lib/roles';
 import { currency, formatDate } from '@/lib/utils';
 
 type MerchItem = {
@@ -58,6 +64,7 @@ export function EventDetailPage() {
 	const ticketsAvailable = event.ticketTypes?.reduce((sum, ticket) => sum + Number(ticket.quantity || 0), 0) ?? 0;
 	const buyers = new Set(paidOrders.map((order) => order.customerEmail)).size;
 	const merchItems = normalizeMerch(event.addOns);
+	const canManageSlug = [Role.SUPER_ADMIN, Role.PLATFORM_ADMIN, Role.ADMIN].includes(authStore.getRole() as Role);
 
 	return (
 		<section className='space-y-6'>
@@ -123,7 +130,10 @@ export function EventDetailPage() {
 			<OrdersPanel orders={eventOrders} loading={ordersLoading} />
 
 			<div className='card p-6'>
-				<h3 className='text-lg font-semibold text-slate-950'>Event Metadata</h3>
+				<div className='flex flex-wrap items-center justify-between gap-3'>
+					<h3 className='text-lg font-semibold text-slate-950'>Event Metadata</h3>
+					{canManageSlug ? <EventSlugEditor event={event} /> : null}
+				</div>
 				<div className='mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
 					<Detail label='Event ID' value={event.id} />
 					<Detail label='Slug' value={event.slug} />
@@ -139,6 +149,114 @@ export function EventDetailPage() {
 			</div>
 		</section>
 	);
+}
+
+function EventSlugEditor({ event }: { event: Event }) {
+	const { push } = useToast();
+	const updateSlug = useUpdateEventSlug();
+	const [open, setOpen] = useState(false);
+	const [confirmOpen, setConfirmOpen] = useState(false);
+	const [slug, setSlug] = useState(event.slug);
+	const normalizedSlug = slugify(slug);
+	const isChanged = normalizedSlug !== event.slug;
+
+	function closeEditor() {
+		setOpen(false);
+		setConfirmOpen(false);
+		setSlug(event.slug);
+	}
+
+	async function saveSlug() {
+		if (!normalizedSlug || !isChanged) return;
+		try {
+			const updated = await updateSlug.mutateAsync({ id: event.id, slug: normalizedSlug });
+			setSlug(updated.slug);
+			setConfirmOpen(false);
+			setOpen(false);
+			push({
+				title: 'Event slug updated',
+				description: `The event is now available at /events/${updated.slug}.`,
+			});
+		} catch (error) {
+			push({
+				title: 'Slug could not be updated',
+				description: error instanceof Error ? error.message : 'Choose a different slug and try again.',
+				variant: 'error',
+			});
+		}
+	}
+
+	if (!open) {
+		return (
+			<button
+				type='button'
+				onClick={() => setOpen(true)}
+				className='inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50'>
+				<Pencil size={15} />
+				Edit slug
+			</button>
+		);
+	}
+
+	return (
+		<>
+			<div className='w-full rounded-xl border border-slate-200 bg-slate-50 p-4 sm:w-auto sm:min-w-[420px]'>
+				<label className='block text-sm font-semibold text-slate-800' htmlFor='event-slug'>
+					Public event slug
+				</label>
+				<div className='mt-2 flex items-center rounded-xl border border-slate-300 bg-white px-3 focus-within:border-primary'>
+					<span className='shrink-0 text-sm text-slate-400'>/events/</span>
+					<input
+						id='event-slug'
+						value={slug}
+						onChange={(input) => setSlug(input.target.value)}
+						className='h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none'
+						placeholder='event-slug'
+					/>
+				</div>
+				{slug && slug !== normalizedSlug ? (
+					<p className='mt-2 text-xs text-slate-500'>It will be saved as <span className='font-mono text-slate-700'>{normalizedSlug || 'invalid-slug'}</span>.</p>
+				) : null}
+				<div className='mt-3 flex justify-end gap-2'>
+					<button type='button' onClick={closeEditor} className='h-9 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 hover:bg-white'>Cancel</button>
+					<button
+						type='button'
+						onClick={() => setConfirmOpen(true)}
+						disabled={!normalizedSlug || !isChanged || updateSlug.isPending}
+						className='h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50'>
+						Review change
+					</button>
+				</div>
+			</div>
+
+			<Modal
+				open={confirmOpen}
+				title='Change public event link?'
+				description='Existing bookmarks, campaigns, QR codes, and previously shared links using the current slug will stop opening this event.'
+				onClose={() => setConfirmOpen(false)}
+				footer={(
+					<>
+						<button type='button' onClick={() => setConfirmOpen(false)} className='rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50'>Cancel</button>
+						<button type='button' onClick={() => void saveSlug()} disabled={updateSlug.isPending} className='rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60'>
+							{updateSlug.isPending ? 'Updating...' : 'Change event link'}
+						</button>
+					</>
+				)}>
+				<div className='space-y-3 text-sm'>
+					<div><p className='text-slate-500'>Current</p><p className='mt-1 break-all font-mono text-slate-800'>/events/{event.slug}</p></div>
+					<div><p className='text-slate-500'>New</p><p className='mt-1 break-all font-mono font-semibold text-primary'>/events/{normalizedSlug}</p></div>
+				</div>
+			</Modal>
+		</>
+	);
+}
+
+function slugify(value: string) {
+	return value
+		.toLowerCase()
+		.trim()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/(^-|-$)+/g, '');
 }
 
 function TicketInventory({ tickets, paidOrders }: { tickets: TicketType[]; paidOrders: TicketOrderRow[] }) {
