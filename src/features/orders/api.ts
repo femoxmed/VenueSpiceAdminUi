@@ -44,3 +44,27 @@ export function getOrders(status?: string) {
 		query: status && status !== 'all' ? { status } : undefined,
 	});
 }
+
+export type StripeReconciliationResult = {
+	scanned: number;
+	paid: number;
+	cancelled: number;
+	pending: number;
+	failed: number;
+	results: Array<{
+		orderId: string;
+		sessionId: string;
+		customerName: string;
+		eventTitle: string;
+		amount: number;
+		currency: string;
+		outcome: 'paid' | 'cancelled' | 'pending' | 'failed';
+		reason: string;
+	}>;
+};
+
+export function reconcilePendingStripeOrders() {
+	return apiClient<StripeReconciliationResult>('/ticket-orders/stripe/reconcile-pending', {
+		method: 'POST',
+	});
+}
