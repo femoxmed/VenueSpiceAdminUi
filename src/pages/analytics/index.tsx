@@ -6,7 +6,8 @@ import { useEvents, useOrganizations } from '@/features/ticketing/hooks';
 import { analyticsApi, type ReportName } from '@/features/analytics/api';
 
 const reports: { id: ReportName; label: string }[] = [
-  { id: 'registrations', label: 'User Registration' }, { id: 'event-creation', label: 'Event Creation' },
+  { id: 'website-traffic', label: 'Website Traffic' }, { id: 'user-engagement', label: 'User Engagement' },
+  { id: 'checkout-conversion', label: 'Checkout Conversion' }, { id: 'registrations', label: 'User Registration' }, { id: 'event-creation', label: 'Event Creation' },
   { id: 'organizer-adoption', label: 'Organizer Adoption' }, { id: 'ticket-sales', label: 'Ticket Sales' }, { id: 'revenue', label: 'Revenue' },
 ];
 const date = (d: Date) => d.toISOString().slice(0, 10);
@@ -36,7 +37,18 @@ export function AnalyticsPage({ initialReport = 'registrations' }: { initialRepo
   const rows = data?.rows.filter(r => r.currency === selectedCurrency) || [];
   const previous = data?.previousTotals.find(r => r.currency === selectedCurrency);
   const total = data?.totals.find(r => r.currency === selectedCurrency);
-  const format = (value: unknown) => new Intl.NumberFormat('en', { maximumFractionDigits: report === 'revenue' ? 2 : 0, minimumFractionDigits: report === 'revenue' ? 2 : 0 }).format(Number(value || 0));
+  const format = (value: unknown, key?: string) => {
+    if (value === null || value === undefined) return '—';
+    const unit = data?.columns.find(c => c.key === key)?.unit;
+    const decimals = report === 'revenue' || unit ? 2 : 0;
+    const number = new Intl.NumberFormat('en', { maximumFractionDigits: decimals, minimumFractionDigits: decimals }).format(Number(value));
+    return `${number}${unit === 'percent' ? '%' : unit === 'seconds' ? ' s' : ''}`;
+  };
+  const coverage = data?.coverage;
+  const trackingStart = coverage?.firstObservedAt ? new Date(coverage.firstObservedAt).toISOString().slice(0, 10) : null;
+  const comparisonIncomplete = coverage && data && (data.previousStart < coverage.retentionCutoff.slice(0, 10) || !trackingStart || data.previousStart < trackingStart);
+  const funnelRows = data?.report === 'checkout-conversion' ? data.columns.filter(c => ['journeys', 'selected', 'started', 'completed'].includes(c.key)).map(c => ({ name: c.label, value: Number(total?.[c.key] || 0) })) : [];
+
   async function download() {
     setExporting(true); setExportError('');
     try {
@@ -48,7 +60,7 @@ export function AnalyticsPage({ initialReport = 'registrations' }: { initialRepo
     finally { setExporting(false); }
   }
   return <section className='space-y-6'>
-    <PageHeader title='Analytics Reports' description='Track account growth, event creation, organizer adoption, ticket sales, and revenue.' />
+    <PageHeader title='Analytics Reports' description='Track traffic, engagement, checkout conversion, platform growth, sales, revenue, and tax collected.' />
     <div className='flex flex-wrap gap-2' aria-label='Select report'>{reports.map(r => <button key={r.id} aria-pressed={report === r.id} className={`${control} ${report === r.id ? '!bg-slate-900 !text-white' : ''}`} onClick={() => { setReport(r.id); setMetric(''); }}>{r.label}</button>)}</div>
     <div className='flex flex-wrap items-end gap-4 rounded-xl border bg-white p-4'>
       <label className='grid gap-1 text-sm'>From (UTC)<input className={control} type='date' value={start} onChange={e => setStart(e.target.value)} /></label>
@@ -67,18 +79,32 @@ export function AnalyticsPage({ initialReport = 'registrations' }: { initialRepo
     {query.isError && <div role='alert' className='text-red-700'>Unable to load report: {query.error.message} <button className={control} onClick={() => query.refetch()}>Retry</button></div>}
     {valid && data && <>
       <p className='text-sm text-slate-600'>{data.definition}</p>
+      {coverage && <div className='rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950' role='status'>
+        {trackingStart ? <>Retained tracking for this scope begins {trackingStart}. Latest recorded activity: {coverage.lastObservedAt ? new Date(coverage.lastObservedAt).toLocaleString('en', { timeZone: 'UTC' }) : 'unavailable'} UTC. </> : <>No tracking has been recorded for this scope. Enable collection on the backend and public frontend before expecting results. </>}
+        Raw tracking is retained for {coverage.retentionDays} days. Earlier, blocked, or untracked activity is unavailable; zeros do not establish that no visitors arrived.
+        {compare && comparisonIncomplete && <p className='mt-2 font-medium'>The comparison period may have incomplete tracking history.</p>}
+      </div>}
+
       {report === 'revenue' && <label className='flex items-center gap-3 text-sm'>Currency<select className={control} value={selectedCurrency} onChange={e => setCurrency(e.target.value)}>{currencies.map(c => <option key={c}>{c}</option>)}</select><span>Currencies are never combined.</span></label>}
       {compare && <p className='text-sm text-slate-600'>Compared with {data.previousStart} through {data.previousEnd} (UTC).</p>}
       <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-3'>{data.columns.map(c => {
-        const value = Number(total?.[c.key] || 0); const before = Number(previous?.[c.key] || 0);
-        return <div key={c.key} className='rounded-xl border bg-white p-5'><p className='text-sm text-slate-600'>{c.label}</p><p className='mt-2 text-2xl font-semibold'>{selectedCurrency} {format(value)}</p>{compare && <p className='mt-2 text-sm text-slate-500'>Previous: {format(before)} · {before === 0 ? (value === 0 ? 'No change' : 'No prior baseline') : `${((value - before) / Math.abs(before) * 100).toFixed(1)}%`}</p>}</div>;
+        const value = total?.[c.key] ?? (c.nullable ? null : 0); const before = previous?.[c.key] ?? (c.nullable ? null : 0);
+        const delta = value === null || before === null ? 'Comparison unavailable' : c.unit === 'percent'
+          ? `${(Number(value) - Number(before)).toFixed(2)} percentage points`
+          : Number(before) === 0 ? (Number(value) === 0 ? 'No change' : 'No prior baseline') : `${((Number(value) - Number(before)) / Math.abs(Number(before)) * 100).toFixed(1)}%`;
+        return <div key={c.key} className='rounded-xl border bg-white p-5'><p className='text-sm text-slate-600'>{c.label}</p><p className='mt-2 text-2xl font-semibold'>{selectedCurrency} {format(value, c.key)}</p>{compare && <p className='mt-2 text-sm text-slate-500'>Previous: {format(before, c.key)} · {delta}</p>}</div>;
       })}</div>
+      {funnelRows.length > 0 && <div className='rounded-xl border bg-white p-4'>
+        <h3 className='font-semibold'>Observed checkout stages</h3>
+        <p className='mt-1 text-sm text-slate-600'>One count per visitor/session/event. Missing browser signals can cause gaps between stages. Completion is confirmed by the backend.</p>
+        <div className='mt-4 h-64' role='img' aria-label='Checkout stages; exact counts are in the summary cards above.'><ResponsiveContainer width='100%' height='100%'><BarChart data={funnelRows} layout='vertical' margin={{ left: 20 }}><CartesianGrid strokeDasharray='3 3' /><XAxis type='number' allowDecimals={false} /><YAxis type='category' dataKey='name' width={175} /><Tooltip /><Bar dataKey='value' name='Journeys' fill='#ea580c' /></BarChart></ResponsiveContainer></div>
+      </div>}
       {rows.length > 0 ? <div className='rounded-xl border bg-white p-4'>
         <label className='flex items-center gap-3 text-sm'>Chart metric<select className={control} value={selectedMetric} onChange={e => setMetric(e.target.value)}>{data.columns.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label>
-        <div className='mt-4 h-72' role='img' aria-label={`${reports.find(r => r.id === report)?.label} by ${groupBy}. Values are listed in the table below.`}><ResponsiveContainer width='100%' height='100%'><BarChart data={rows}><CartesianGrid strokeDasharray='3 3' /><XAxis dataKey='bucket' /><YAxis /><Tooltip /><Bar dataKey={selectedMetric} name={data.columns.find(c => c.key === selectedMetric)?.label} fill='#ea580c' /></BarChart></ResponsiveContainer></div>
+        <div className='mt-4 h-72' role='img' aria-label={`${reports.find(r => r.id === report)?.label} by ${groupBy}. Values are listed in the table below.`}><ResponsiveContainer width='100%' height='100%'><BarChart data={rows}><CartesianGrid strokeDasharray='3 3' /><XAxis dataKey='bucket' /><YAxis /><Tooltip formatter={value => format(value, selectedMetric)} /><Bar dataKey={selectedMetric} name={data.columns.find(c => c.key === selectedMetric)?.label} fill='#ea580c' /></BarChart></ResponsiveContainer></div>
       </div> : <p>No records for this period and currency.</p>}
-      <div className='overflow-x-auto rounded-xl border bg-white'><table className='w-full text-left text-sm'><caption className='p-3 text-left text-slate-600'>Current period · UTC · partial weeks/months include only selected dates.</caption><thead><tr><th className='p-3'>Period starting</th>{data.columns.map(c => <th key={c.key} className='p-3'>{c.label}{selectedCurrency ? ` (${selectedCurrency})` : ''}</th>)}</tr></thead><tbody>{rows.map(r => <tr key={`${r.bucket}:${r.currency}`} className='border-t'><td className='p-3'>{r.bucket}</td>{data.columns.map(c => <td key={c.key} className='p-3'>{format(r[c.key])}</td>)}</tr>)}</tbody></table></div>
+      <div className='overflow-x-auto rounded-xl border bg-white'><table className='w-full text-left text-sm'><caption className='p-3 text-left text-slate-600'>Current period · UTC · partial weeks/months include only selected dates.</caption><thead><tr><th className='p-3'>Period starting</th>{data.columns.map(c => <th key={c.key} className='p-3'>{c.label}{selectedCurrency ? ` (${selectedCurrency})` : ''}</th>)}</tr></thead><tbody>{rows.map(r => <tr key={`${r.bucket}:${r.currency}`} className='border-t'><td className='p-3'>{r.bucket}</td>{data.columns.map(c => <td key={c.key} className='p-3'>{format(r[c.key], c.key)}</td>)}</tr>)}</tbody></table></div>
     </>}
-    <p className='text-sm text-slate-500'>Traffic, engagement, and checkout-funnel reports are next. Their tracking starts only after collection is enabled; earlier activity is unavailable.</p>
+    {data && <p className='text-sm text-slate-500'>Report generated {new Date(data.generatedAt).toLocaleString('en', { timeZone: 'UTC' })} UTC. Tax collected is shown in Revenue and is excluded from platform earnings.</p>}
   </section>;
 }

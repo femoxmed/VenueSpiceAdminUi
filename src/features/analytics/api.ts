@@ -1,10 +1,11 @@
 import { apiClient } from '@/lib/api-client';
-export type ReportName = 'registrations' | 'event-creation' | 'organizer-adoption' | 'ticket-sales' | 'revenue';
+export type ReportName = 'registrations' | 'event-creation' | 'organizer-adoption' | 'ticket-sales' | 'revenue' | 'website-traffic' | 'user-engagement' | 'checkout-conversion';
 export type ReportFilters = { start: string; end: string; groupBy: string; organizationId?: string; eventId?: string };
-export type ReportRow = { bucket: string; currency: string; [key: string]: string | number };
+export type ReportRow = { bucket: string; currency: string; [key: string]: string | number | null };
 export type AnalyticsReport = {
   report: ReportName; timezone: string; start: string; end: string; previousStart: string; previousEnd: string;
-  definition: string; columns: { key: string; label: string }[];
+  definition: string; generatedAt: string; coverage: { firstObservedAt: string | null; lastObservedAt: string | null; retentionDays: number; retentionCutoff: string } | null;
+  columns: { key: string; label: string; unit?: 'percent' | 'seconds' | 'decimal'; nullable?: boolean }[];
   rows: ReportRow[]; totals: ReportRow[]; previousRows: ReportRow[]; previousTotals: ReportRow[];
 };
 export const analyticsApi = {
