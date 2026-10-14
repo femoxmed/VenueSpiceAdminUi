@@ -5,6 +5,7 @@ const API_BASE_URL =
 		?.VITE_API_BASE_URL ?? 'http://localhost:4000/api';
 
 type ApiOptions = RequestInit & {
+	responseType?: 'blob';
 	query?: Record<string, string | number | undefined | null>;
 };
 
@@ -77,6 +78,7 @@ async function request<T>(
 		);
 	}
 
+	if (options.responseType === 'blob') return await response.blob() as T;
 	return payload as T;
 }
 
