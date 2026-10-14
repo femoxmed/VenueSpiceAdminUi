@@ -5,7 +5,8 @@ import { PageHeader } from '@/components/shared/page-header';
 import { useEvents, useOrganizations } from '@/features/ticketing/hooks';
 import { analyticsApi, type ReportName } from '@/features/analytics/api';
 
-const reports: { id: ReportName; label: string }[] = [
+export const reports: { id: ReportName; label: string }[] = [
+  { id: 'traffic-source', label: 'Traffic Source' }, { id: 'event-status', label: 'Event Status' }, { id: 'event-performance', label: 'Event Performance' }, { id: 'payment-refund', label: 'Payment & Refund' }, { id: 'promoter-referral', label: 'Promoter & Referral' }, { id: 'geographic', label: 'Geographic' }, { id: 'user-retention', label: 'User Retention' },
   { id: 'website-traffic', label: 'Website Traffic' }, { id: 'user-engagement', label: 'User Engagement' },
   { id: 'checkout-conversion', label: 'Checkout Conversion' }, { id: 'registrations', label: 'User Registration' }, { id: 'event-creation', label: 'Event Creation' },
   { id: 'organizer-adoption', label: 'Organizer Adoption' }, { id: 'ticket-sales', label: 'Ticket Sales' }, { id: 'revenue', label: 'Revenue' },
@@ -49,12 +50,12 @@ export function AnalyticsPage({ initialReport = 'registrations' }: { initialRepo
   const comparisonIncomplete = coverage && data && (data.previousStart < coverage.retentionCutoff.slice(0, 10) || !trackingStart || data.previousStart < trackingStart);
   const funnelRows = data?.report === 'checkout-conversion' ? data.columns.filter(c => ['journeys', 'selected', 'started', 'completed'].includes(c.key)).map(c => ({ name: c.label, value: Number(total?.[c.key] || 0) })) : [];
 
-  async function download() {
+  async function download(format: 'csv' | 'xlsx') {
     setExporting(true); setExportError('');
     try {
-      const blob = await analyticsApi.export(report, filters);
+      const blob = await analyticsApi.export(report, filters, format);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `${report}-${start}-${end}.csv`; a.click();
+      const a = document.createElement('a'); a.href = url; a.download = `${report}-${start}-${end}.${format}`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) { setExportError(error instanceof Error ? error.message : 'Export failed'); }
     finally { setExporting(false); }
@@ -69,7 +70,8 @@ export function AnalyticsPage({ initialReport = 'registrations' }: { initialRepo
       <label className='grid gap-1 text-sm'>Organizer<select className={control} disabled={!scoped} value={scoped ? organizationId : ''} onChange={e => { setOrganizationId(e.target.value); setEventId(''); }}><option value=''>All organizers</option>{organizations.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
       <label className='grid gap-1 text-sm'>Event<select className={control} disabled={!scoped} value={scoped ? eventId : ''} onChange={e => setEventId(e.target.value)}><option value=''>All events</option>{events.filter(e => !organizationId || e.organization?.id === organizationId).map(e => <option key={e.id} value={e.id}>{e.title}</option>)}</select></label>
       <label className='flex items-center gap-2 py-2 text-sm'><input type='checkbox' checked={compare} onChange={e => setCompare(e.target.checked)} />Compare previous period</label>
-      <button className={control} disabled={!data || !valid || query.isFetching || exporting} onClick={download}>{exporting ? 'Exporting…' : 'Export CSV (both periods)'}</button>
+      <button className={control} disabled={!data || !valid || query.isFetching || exporting} onClick={() => download('csv')}>{exporting ? 'Exporting…' : 'Export CSV (both periods)'}</button>
+      <button className={control} disabled={!data || !valid || query.isFetching || exporting} onClick={() => download('xlsx')}>Export Excel (both periods)</button>
     </div>
     {!scoped && <p className='text-sm text-slate-600'>Registration counts are platform-wide. Event and organizer attribution is unavailable.</p>}
     {(orgError || eventError) && <p role='alert'>Some filter options could not be loaded. Refresh to try again.</p>}
@@ -85,14 +87,14 @@ export function AnalyticsPage({ initialReport = 'registrations' }: { initialRepo
         {compare && comparisonIncomplete && <p className='mt-2 font-medium'>The comparison period may have incomplete tracking history.</p>}
       </div>}
 
-      {report === 'revenue' && <label className='flex items-center gap-3 text-sm'>Currency<select className={control} value={selectedCurrency} onChange={e => setCurrency(e.target.value)}>{currencies.map(c => <option key={c}>{c}</option>)}</select><span>Currencies are never combined.</span></label>}
+      {currencies.some(Boolean) && <label className='flex items-center gap-3 text-sm'>Currency<select className={control} value={selectedCurrency} onChange={e => setCurrency(e.target.value)}>{currencies.map(c => <option key={c} value={c}>{c || 'Click-only activity'}</option>)}</select><span>Currencies are never combined.</span></label>}
       {compare && <p className='text-sm text-slate-600'>Compared with {data.previousStart} through {data.previousEnd} (UTC).</p>}
       <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-3'>{data.columns.map(c => {
         const value = total?.[c.key] ?? (c.nullable ? null : 0); const before = previous?.[c.key] ?? (c.nullable ? null : 0);
         const delta = value === null || before === null ? 'Comparison unavailable' : c.unit === 'percent'
           ? `${(Number(value) - Number(before)).toFixed(2)} percentage points`
           : Number(before) === 0 ? (Number(value) === 0 ? 'No change' : 'No prior baseline') : `${((Number(value) - Number(before)) / Math.abs(Number(before)) * 100).toFixed(1)}%`;
-        return <div key={c.key} className='rounded-xl border bg-white p-5'><p className='text-sm text-slate-600'>{c.label}</p><p className='mt-2 text-2xl font-semibold'>{selectedCurrency} {format(value, c.key)}</p>{compare && <p className='mt-2 text-sm text-slate-500'>Previous: {format(before, c.key)} · {delta}</p>}</div>;
+        return <div key={c.key} className='rounded-xl border bg-white p-5'><p className='text-sm text-slate-600'>{c.label}</p><p className='mt-2 text-2xl font-semibold'>{report === 'revenue' || ['refundAmount','outstanding','commissions','chargebackAmount'].includes(c.key) ? selectedCurrency : ''} {format(value, c.key)}</p>{compare && <p className='mt-2 text-sm text-slate-500'>Previous: {format(before, c.key)} · {delta}</p>}</div>;
       })}</div>
       {funnelRows.length > 0 && <div className='rounded-xl border bg-white p-4'>
         <h3 className='font-semibold'>Observed checkout stages</h3>
@@ -103,6 +105,12 @@ export function AnalyticsPage({ initialReport = 'registrations' }: { initialRepo
         <label className='flex items-center gap-3 text-sm'>Chart metric<select className={control} value={selectedMetric} onChange={e => setMetric(e.target.value)}>{data.columns.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label>
         <div className='mt-4 h-72' role='img' aria-label={`${reports.find(r => r.id === report)?.label} by ${groupBy}. Values are listed in the table below.`}><ResponsiveContainer width='100%' height='100%'><BarChart data={rows}><CartesianGrid strokeDasharray='3 3' /><XAxis dataKey='bucket' /><YAxis /><Tooltip formatter={value => format(value, selectedMetric)} /><Bar dataKey={selectedMetric} name={data.columns.find(c => c.key === selectedMetric)?.label} fill='#ea580c' /></BarChart></ResponsiveContainer></div>
       </div> : <p>No records for this period and currency.</p>}
+      {data.dimensions?.length > 0 && <div className='overflow-x-auto rounded-xl border bg-white p-4'>
+        <h3 className='font-semibold'>Breakdown ranked by {data.columns.find(c=>c.key===selectedMetric)?.label}</h3>
+        <table className='w-full text-left text-sm'><thead><tr>{data.dimensions.map(d=><th key={d.key} className='p-3'>{d.label}</th>)}{data.columns.map(c=><th key={c.key} className='p-3'>{c.label}</th>)}</tr></thead><tbody>
+          {[...(data.breakdown || [])].filter(r=>r.currency===selectedCurrency).sort((a,b)=>Number(b[selectedMetric]||0)-Number(a[selectedMetric]||0)).map((r,i)=><tr key={i} className='border-t'>{data.dimensions.map(d=><td key={d.key} className='p-3'>{r[d.key]}</td>)}{data.columns.map(c=><td key={c.key} className='p-3'>{format(r[c.key],c.key)}</td>)}</tr>)}
+        </tbody></table>
+      </div>}
       <div className='overflow-x-auto rounded-xl border bg-white'><table className='w-full text-left text-sm'><caption className='p-3 text-left text-slate-600'>Current period · UTC · partial weeks/months include only selected dates.</caption><thead><tr><th className='p-3'>Period starting</th>{data.columns.map(c => <th key={c.key} className='p-3'>{c.label}{selectedCurrency ? ` (${selectedCurrency})` : ''}</th>)}</tr></thead><tbody>{rows.map(r => <tr key={`${r.bucket}:${r.currency}`} className='border-t'><td className='p-3'>{r.bucket}</td>{data.columns.map(c => <td key={c.key} className='p-3'>{format(r[c.key], c.key)}</td>)}</tr>)}</tbody></table></div>
     </>}
     {data && <p className='text-sm text-slate-500'>Report generated {new Date(data.generatedAt).toLocaleString('en', { timeZone: 'UTC' })} UTC. Tax collected is shown in Revenue and is excluded from platform earnings.</p>}
