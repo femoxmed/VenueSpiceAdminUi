@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useUser } from '@/features/users/hooks';
+import { UserPurchaseHistory } from '@/components/shared/user-purchase-history';
 
 const roleLabels: Record<string, string> = {
 	super_admin: 'Super Admin',
@@ -42,7 +43,7 @@ export function UserDetailPage() {
 		<section className='space-y-6'>
 			<PageHeader
 				title={user.fullName || user.email}
-				description='Complete account, role, profile, and business details for this user.'
+				description='Account details and ticket purchase history for this user.'
 				action={
 					<Link
 						to='/users'
@@ -96,6 +97,7 @@ export function UserDetailPage() {
 					</div>
 				</div>
 			</div>
+			<UserPurchaseHistory key={user.id} userId={user.id} />
 		</section>
 	);
 }
