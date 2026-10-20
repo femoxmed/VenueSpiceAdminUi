@@ -1,3 +1,4 @@
+import CustomerPurchases from '@/components/shared/customer-purchases';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -114,5 +115,6 @@ export function AnalyticsPage({ initialReport = 'registrations' }: { initialRepo
       <div className='overflow-x-auto rounded-xl border bg-white'><table className='w-full text-left text-sm'><caption className='p-3 text-left text-slate-600'>Current period · UTC · partial weeks/months include only selected dates.</caption><thead><tr><th className='p-3'>Period starting</th>{data.columns.map(c => <th key={c.key} className='p-3'>{c.label}{selectedCurrency ? ` (${selectedCurrency})` : ''}</th>)}</tr></thead><tbody>{rows.map(r => <tr key={`${r.bucket}:${r.currency}`} className='border-t'><td className='p-3'>{r.bucket}</td>{data.columns.map(c => <td key={c.key} className='p-3'>{format(r[c.key], c.key)}</td>)}</tr>)}</tbody></table></div>
     </>}
     {data && <p className='text-sm text-slate-500'>Report generated {new Date(data.generatedAt).toLocaleString('en', { timeZone: 'UTC' })} UTC. Tax collected is shown in Revenue and is excluded from platform earnings.</p>}
+    <CustomerPurchases />
   </section>;
 }
