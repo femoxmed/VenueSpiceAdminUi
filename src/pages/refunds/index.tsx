@@ -1,3 +1,4 @@
+import { AdminRefundTools } from './admin-refund-tools';
 import { useState } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCcw, ShieldCheck, TicketX, XCircle } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/shared/data-table';
@@ -121,10 +122,12 @@ export function RefundsPage() {
 			/>
 			<div className='grid gap-5 md:grid-cols-2 xl:grid-cols-4'>
 				<MetricCard title='Pending Requests' value={String(requested.length)} helper={currency(requestedExposure)} icon={<RefreshCcw size={22} />} />
-				<MetricCard title='Refunded Orders' value={String(refunded.length)} helper='Orders fully refunded' icon={<TicketX size={22} />} />
+				<MetricCard title='Refunded Orders' value={String(refunded.length)} helper='Orders with completed refunds' icon={<TicketX size={22} />} />
 				<MetricCard title='Refund Exposure' value={currency(refundExposure)} helper='Value returned to payment methods' icon={<CheckCircle2 size={22} />} />
 				<MetricCard title='Disputes' value='0' helper='Chargebacks requiring evidence' icon={<AlertTriangle size={22} />} />
 			</div>
+
+			<AdminRefundTools />
 
 			<DataTable
 				rows={refunds}
@@ -171,6 +174,14 @@ export function RefundsPage() {
 							<Detail label='Event' value={selected.order?.event?.title ?? 'Unknown event'} />
 							<Detail label='Amount' value={currency(Number(selected.amount || 0))} />
 							<Detail label='Status' value={selected.status} />
+                            {selected.policySnapshot ? <>
+                             <Detail label='Cancellation reason' value={selected.policySnapshot.cancellationReason.replace(/_/g,' ')} />
+                             <Detail label='Processing fee retained' value={currency(selected.policySnapshot.retainedProcessingFee)} />
+                             <Detail label='Tickets / add-ons refunded' value={currency(selected.policySnapshot.refundedSubtotal)} />
+                             <Detail label='Buyer fees refunded' value={currency(selected.policySnapshot.refundedFees)} />
+                             <Detail label='Tax refunded' value={currency(selected.policySnapshot.taxPortion)} />
+                             <Detail label='Total retained' value={currency(selected.policySnapshot.totalRetained)} />
+                            </> : null}
 							<Detail label='Stripe refund' value={selected.stripeRefundId ?? 'Not processed'} />
 							<Detail label='Requested' value={new Date(selected.createdAt).toLocaleString()} />
 						</div>
