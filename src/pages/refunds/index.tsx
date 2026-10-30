@@ -14,6 +14,7 @@ export function RefundsPage() {
 	const { data: refunds = [], isLoading } = useRefundRequests();
 	const approve = useApproveRefundRequest();
 	const decline = useDeclineRefundRequest();
+	const [requestToApprove,setRequestToApprove]=useState<RefundRequest|null>(null);
 	const [selected, setSelected] = useState<RefundRequest | null>(null);
 	const [reviewMode, setReviewMode] = useState<'approve' | 'decline' | null>(null);
 	const [note, setNote] = useState('');
@@ -80,9 +81,7 @@ export function RefundsPage() {
 							<button
 								className='rounded-lg px-2 py-1 text-sm font-medium text-emerald-600 hover:bg-emerald-50'
 								onClick={() => {
-									setSelected(row);
-									setReviewMode('approve');
-									setNote('');
+									setRequestToApprove(row);
 								}}>
 								Approve
 							</button>
@@ -127,7 +126,7 @@ export function RefundsPage() {
 				<MetricCard title='Disputes' value='0' helper='Chargebacks requiring evidence' icon={<AlertTriangle size={22} />} />
 			</div>
 
-			<AdminRefundTools />
+			<AdminRefundTools requestToApprove={requestToApprove} onCloseRequest={()=>setRequestToApprove(null)} />
 
 			<DataTable
 				rows={refunds}
@@ -179,6 +178,11 @@ export function RefundsPage() {
                              <Detail label='Processing fee retained' value={currency(selected.policySnapshot.retainedProcessingFee)} />
                              <Detail label='Tickets / add-ons refunded' value={currency(selected.policySnapshot.refundedSubtotal)} />
                              <Detail label='Buyer fees refunded' value={currency(selected.policySnapshot.refundedFees)} />
+                             {selected.policySnapshot.refundComponents ? <>
+                              <Detail label='Service fee refunded' value={currency(selected.policySnapshot.refundComponents.serviceFee)} />
+                              <Detail label='Processing fee refunded' value={currency(selected.policySnapshot.refundComponents.processingFee)} />
+                              <Detail label='Admin allocation' value={selected.policySnapshot.adminOverride ? 'Custom selection' : 'Policy recommendation'} />
+                             </> : null}
                              <Detail label='Tax refunded' value={currency(selected.policySnapshot.taxPortion)} />
                              <Detail label='Total retained' value={currency(selected.policySnapshot.totalRetained)} />
                             </> : null}
