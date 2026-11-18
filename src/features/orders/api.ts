@@ -68,3 +68,10 @@ export function reconcilePendingStripeOrders() {
 		method: 'POST',
 	});
 }
+
+export function reassignTicketOrder(orderId: string, payload: { email: string; fullName: string; userId?: string; sendEmail: boolean }) {
+	return apiClient<{ orderId: string; email: string; fullName: string; buyerUserId: string | null; emailSent: boolean }>(`/ticket-orders/${orderId}/reassign`, {
+		method: 'POST',
+		body: JSON.stringify(payload),
+	});
+}

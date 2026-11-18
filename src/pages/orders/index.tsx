@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { DataTable, type ColumnDef } from '@/components/shared/data-table';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { useOrders, useReconcilePendingStripeOrders } from '@/features/orders/hooks';
+import { useOrders, useReconcilePendingStripeOrders, useReassignTicketOrder } from '@/features/orders/hooks';
 import type { StripeReconciliationResult, TicketOrderRow } from '@/features/orders/api';
 import { useToast } from '@/components/shared/toast-provider';
 import { currency } from '@/lib/utils';
@@ -69,8 +69,11 @@ const columns: ColumnDef<TicketOrderRow>[] = [
 export function OrdersPage() {
 	const [statusFilter, setStatusFilter] = useState('paid');
 	const [reconciliationResult, setReconciliationResult] = useState<StripeReconciliationResult | null>(null);
+	const [reassigning, setReassigning] = useState<TicketOrderRow | null>(null);
+	const [reassignForm, setReassignForm] = useState({ fullName: '', email: '', sendEmail: true });
 	const { data: rows = [] } = useOrders(statusFilter);
 	const reconcile = useReconcilePendingStripeOrders();
+	const reassign = useReassignTicketOrder();
 	const toast = useToast();
 
 	const handleReconcile = () => {
@@ -153,6 +156,7 @@ export function OrdersPage() {
 										Checkout
 									</a>
 								) : null}
+								{order.status === 'paid' ? <button type='button' onClick={() => { setReassigning(order); setReassignForm({ fullName: order.customerName, email: order.customerEmail, sendEmail: true }); }} className='inline-flex items-center gap-2 rounded-lg border border-secondary px-3 py-2 text-sm font-medium text-secondary hover:bg-blue-50'>Reassign ticket</button> : null}
 							</div>
 						</div>
 
@@ -234,6 +238,17 @@ export function OrdersPage() {
 					</div>
 				</div>
 			) : null}
+			{reassigning ? <div className='fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4' role='dialog' aria-modal='true'>
+				<div className='w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl'>
+					<div className='flex items-start justify-between gap-4'><div><h3 className='text-lg font-semibold text-slate-950'>Reassign ticket order</h3><p className='mt-1 text-sm text-slate-500'>Update the buyer mapping and send the ticket confirmation to the corrected email.</p></div><button type='button' onClick={() => setReassigning(null)} className='rounded-lg p-2 text-slate-500 hover:bg-slate-100' aria-label='Close'><X size={18} /></button></div>
+					<div className='mt-5 space-y-4'>
+						<label className='block text-sm font-medium text-slate-700'>Full name<input value={reassignForm.fullName} onChange={e => setReassignForm(v => ({ ...v, fullName: e.target.value }))} className='mt-1 w-full rounded-lg border border-slate-200 px-3 py-2' /></label>
+						<label className='block text-sm font-medium text-slate-700'>Correct email<input type='email' value={reassignForm.email} onChange={e => setReassignForm(v => ({ ...v, email: e.target.value }))} className='mt-1 w-full rounded-lg border border-slate-200 px-3 py-2' /></label>
+						<label className='flex items-center gap-2 text-sm text-slate-700'><input type='checkbox' checked={reassignForm.sendEmail} onChange={e => setReassignForm(v => ({ ...v, sendEmail: e.target.checked }))} />Send ticket confirmation email now</label>
+					</div>
+					<div className='mt-6 flex justify-end gap-3'><button type='button' onClick={() => setReassigning(null)} className='rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium'>Cancel</button><button type='button' disabled={reassign.isPending || !reassignForm.fullName.trim() || !reassignForm.email.trim()} onClick={() => reassign.mutate({ orderId: reassigning.id, ...reassignForm }, { onSuccess: result => { setReassigning(null); toast.push({ title: 'Ticket reassigned', description: result.emailSent ? `Confirmation queued for ${result.email}.` : 'Buyer mapping updated.', variant: 'success' }); }, onError: error => toast.push({ title: 'Could not reassign ticket', description: error instanceof Error ? error.message : 'Please try again.', variant: 'error' }) })} className='rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50'>{reassign.isPending ? 'Updating...' : 'Save & send'}</button></div>
+				</div>
+			</div> : null}
 		</section>
 	);
 }
