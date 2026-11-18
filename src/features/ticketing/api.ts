@@ -67,6 +67,7 @@ export type Event = {
 	startsAt: string;
 	endsAt?: string | null;
 	coverImageUrl?: string | null;
+	portraitImageUrl?: string | null;
 	imageUrls?: string[];
 	socialLinks?: Record<string, string>;
 	appearances?: Array<Record<string, unknown>>;
@@ -116,7 +117,7 @@ export const ticketingApi = {
 			method: 'POST',
 			body: JSON.stringify(payload),
 		}),
-	updateEvent: (id: string, payload: { slug: string }) =>
+	updateEvent: (id: string, payload: Partial<CreateEventPayload> & { slug?: string }) =>
 		apiClient<Event>(`/events/${id}`, {
 			method: 'PATCH',
 			body: JSON.stringify(payload),
@@ -179,6 +180,7 @@ export type CreateEventPayload = {
 	startsAt: string;
 	endsAt?: string;
 	coverImageUrl?: string;
+	portraitImageUrl?: string;
 	status?: 'draft' | 'published' | 'cancelled' | 'archived';
 	ticketTypes?: Array<{
 		name: string;

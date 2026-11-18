@@ -18,6 +18,8 @@ import { useToast } from '@/components/shared/toast-provider';
 import { useOrders } from '@/features/orders/hooks';
 import type { TicketOrderRow } from '@/features/orders/api';
 import { useEvents, useUpdateEventSlug } from '@/features/ticketing/hooks';
+import { useUpdateEvent } from '@/features/ticketing/hooks';
+import { FileUpload } from '@/components/shared/file-upload';
 import type { Event, TicketType } from '@/features/ticketing/api';
 import { authStore } from '@/lib/auth-store';
 import { Role } from '@/lib/roles';
@@ -80,11 +82,15 @@ export function EventDetailPage() {
 					</Link>
 				}
 			/>
+			{canManageSlug ? <AdminEventEditor event={event} /> : null}
 
 			<div className='grid gap-4 xl:grid-cols-[1.2fr_0.8fr]'>
 				<div className='card overflow-hidden'>
-					{event.coverImageUrl ? (
-						<img src={event.coverImageUrl} alt='' className='h-64 w-full object-cover' />
+					{event.coverImageUrl || event.portraitImageUrl ? (
+						<div className='grid grid-cols-2 gap-2 bg-slate-50 p-2'>
+							{event.coverImageUrl ? <img src={event.coverImageUrl} alt='Landscape event artwork' className='h-64 w-full object-cover' /> : null}
+							{event.portraitImageUrl ? <img src={event.portraitImageUrl} alt='Portrait event artwork' className='h-64 w-full object-cover' /> : null}
+						</div>
 					) : (
 						<div className='grid h-48 place-items-center bg-gradient-to-r from-primary-10 via-secondary-10 to-tertiary-10 text-sm font-semibold text-slate-500'>
 							No event image
@@ -149,6 +155,28 @@ export function EventDetailPage() {
 			</div>
 		</section>
 	);
+}
+
+function AdminEventEditor({ event }: { event: Event }) {
+	const { push } = useToast();
+	const update = useUpdateEvent();
+	const [open, setOpen] = useState(false);
+	const [form, setForm] = useState({ title: event.title, description: event.description || '', venue: event.venue || '', city: event.city || '', state: event.state || '', country: event.country || '', startsAt: event.startsAt.slice(0, 16), endsAt: event.endsAt?.slice(0, 16) || '' });
+	const [images, setImages] = useState({ landscape: event.coverImageUrl || '', portrait: event.portraitImageUrl || '' });
+	const [tickets, setTickets] = useState((event.ticketTypes || []).map(ticket => ({ id: ticket.id, name: ticket.name, price: String(ticket.price), quantity: String(ticket.quantity) })));
+	const save = async () => { try { await update.mutateAsync({ id: event.id, payload: { ...form, startsAt: new Date(form.startsAt).toISOString(), endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : undefined, coverImageUrl: images.landscape || undefined, portraitImageUrl: images.portrait || undefined, ticketTypes: tickets.map(ticket => ({ id: ticket.id, name: ticket.name, price: Number(ticket.price), quantity: Number(ticket.quantity) })) } }); setOpen(false); push({ title: 'Event updated', description: 'The change was saved and audited.' }); } catch (error) { push({ title: 'Update failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'error' }); } };
+	return <>
+		<button type='button' onClick={() => setOpen(true)} className='inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white'><Pencil size={15} />Edit event</button>
+		<Modal open={open} onClose={() => setOpen(false)} title='Edit event (admin)' description='Changes are validated and recorded in the audit log.' footer={<><button type='button' onClick={() => setOpen(false)} className='rounded-xl border px-4 py-2 text-sm'>Cancel</button><button type='button' onClick={() => void save()} disabled={update.isPending} className='rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white'>{update.isPending ? 'Saving...' : 'Save changes'}</button></>}>
+			<div className='max-h-[65vh] space-y-4 overflow-y-auto pr-1'>
+				{(['title','venue','city','state','country'] as const).map(key => <label key={key} className='block text-sm font-medium capitalize'>{key}<input value={form[key]} onChange={e => setForm(v => ({ ...v, [key]: e.target.value }))} className='mt-1 w-full rounded-lg border border-slate-200 px-3 py-2' /></label>)}
+				<label className='block text-sm font-medium'>Description<textarea value={form.description} onChange={e => setForm(v => ({ ...v, description: e.target.value }))} className='mt-1 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2' /></label>
+				<div className='grid gap-3 sm:grid-cols-2'><label className='text-sm font-medium'>Starts<input type='datetime-local' value={form.startsAt} onChange={e => setForm(v => ({ ...v, startsAt: e.target.value }))} className='mt-1 w-full rounded-lg border border-slate-200 px-3 py-2' /></label><label className='text-sm font-medium'>Ends<input type='datetime-local' value={form.endsAt} onChange={e => setForm(v => ({ ...v, endsAt: e.target.value }))} className='mt-1 w-full rounded-lg border border-slate-200 px-3 py-2' /></label></div>
+				<div><p className='mb-2 text-sm font-semibold'>Ticket types</p><div className='space-y-2'>{tickets.map((ticket, index) => <div key={ticket.id} className='grid gap-2 sm:grid-cols-[1fr_110px_110px]'><input value={ticket.name} onChange={e => setTickets(v => v.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} className='rounded-lg border border-slate-200 px-3 py-2 text-sm' /><input type='number' min='0' step='0.01' value={ticket.price} onChange={e => setTickets(v => v.map((item, i) => i === index ? { ...item, price: e.target.value } : item))} className='rounded-lg border border-slate-200 px-3 py-2 text-sm' /><input type='number' min='0' value={ticket.quantity} onChange={e => setTickets(v => v.map((item, i) => i === index ? { ...item, quantity: e.target.value } : item))} className='rounded-lg border border-slate-200 px-3 py-2 text-sm' /></div>)}</div></div>
+				<div className='grid gap-3 sm:grid-cols-2'>{([['landscape','Landscape image'],['portrait','Portrait image']] as const).map(([key,label]) => <div key={key}><p className='mb-1 text-sm font-semibold'>{label}</p>{images[key] ? <div className='relative'><img src={images[key]} alt='' className='h-32 w-full rounded-lg object-cover' /><button type='button' onClick={() => setImages(v => ({ ...v, [key]: '' }))} className='absolute right-2 top-2 rounded bg-rose-600 px-2 py-1 text-xs font-semibold text-white'>Delete</button></div> : <FileUpload label={`Upload ${key}`} onUploadComplete={(url) => setImages(v => ({ ...v, [key]: url }))} />}</div>)}</div>
+			</div>
+		</Modal>
+	</>;
 }
 
 function EventSlugEditor({ event }: { event: Event }) {
