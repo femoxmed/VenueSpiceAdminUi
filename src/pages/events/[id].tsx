@@ -164,7 +164,15 @@ function AdminEventEditor({ event }: { event: Event }) {
 	const [form, setForm] = useState({ title: event.title, description: event.description || '', venue: event.venue || '', city: event.city || '', state: event.state || '', country: event.country || '', startsAt: event.startsAt.slice(0, 16), endsAt: event.endsAt?.slice(0, 16) || '' });
 	const [images, setImages] = useState({ landscape: event.coverImageUrl || '', portrait: event.portraitImageUrl || '' });
 	const [tickets, setTickets] = useState((event.ticketTypes || []).map(ticket => ({ id: ticket.id, name: ticket.name, price: String(ticket.price), quantity: String(ticket.quantity) })));
-	const save = async () => { try { await update.mutateAsync({ id: event.id, payload: { ...form, startsAt: new Date(form.startsAt).toISOString(), endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : undefined, coverImageUrl: images.landscape || undefined, portraitImageUrl: images.portrait || undefined, ticketTypes: tickets.map(ticket => ({ id: ticket.id, name: ticket.name, price: Number(ticket.price), quantity: Number(ticket.quantity) })) } }); setOpen(false); push({ title: 'Event updated', description: 'The change was saved and audited.' }); } catch (error) { push({ title: 'Update failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'error' }); } };
+	const save = async () => { try {
+		const nextStartsAt = new Date(form.startsAt).toISOString();
+		const nextEndsAt = form.endsAt ? new Date(form.endsAt).toISOString() : undefined;
+		const payload = { ...form, ...(nextStartsAt !== event.startsAt ? { startsAt: nextStartsAt } : {}), ...(nextEndsAt !== (event.endsAt || undefined) ? { endsAt: nextEndsAt } : {}), coverImageUrl: images.landscape || undefined, portraitImageUrl: images.portrait || undefined, ticketTypes: tickets.map(ticket => ({ id: ticket.id, name: ticket.name, price: Number(ticket.price), quantity: Number(ticket.quantity) })) };
+		delete (payload as { startsAt?: string }).startsAt;
+		delete (payload as { endsAt?: string }).endsAt;
+		const datePayload = { ...payload, ...(nextStartsAt !== event.startsAt ? { startsAt: nextStartsAt } : {}), ...(nextEndsAt !== (event.endsAt || undefined) ? { endsAt: nextEndsAt } : {}) };
+		await update.mutateAsync({ id: event.id, payload: datePayload }); setOpen(false); push({ title: 'Event updated', description: 'The change was saved and audited.' });
+	} catch (error) { push({ title: 'Update failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'error' }); } };
 	return <>
 		<button type='button' onClick={() => setOpen(true)} className='inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white'><Pencil size={15} />Edit event</button>
 		<Modal open={open} onClose={() => setOpen(false)} title='Edit event (admin)' description='Changes are validated and recorded in the audit log.' footer={<><button type='button' onClick={() => setOpen(false)} className='rounded-xl border px-4 py-2 text-sm'>Cancel</button><button type='button' onClick={() => void save()} disabled={update.isPending} className='rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white'>{update.isPending ? 'Saving...' : 'Save changes'}</button></>}>
