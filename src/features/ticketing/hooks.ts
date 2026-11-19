@@ -62,6 +62,17 @@ export function useUpdateOrganizationPayoutPolicy() {
 	});
 }
 
+export function useUpdateOrganizationEarlyWithdrawalPolicy() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, payload }: { id: string; payload: { enabled: boolean; feePercent?: number; reason?: string } }) => ticketingApi.updateOrganizationEarlyWithdrawalPolicy(id, payload),
+		onSuccess: (_data, variables) => {
+			void queryClient.invalidateQueries({ queryKey: ['organizations'] });
+			void queryClient.invalidateQueries({ queryKey: ['organizations', variables.id] });
+		},
+	});
+}
+
 export function useEvents(organizationId?: string) {
 	return useQuery({
 		queryKey: ['events', organizationId ?? 'all'],

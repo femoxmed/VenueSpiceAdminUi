@@ -7,7 +7,8 @@ import { Modal } from '@/components/shared/modal';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useRefundRequests, useApproveRefundRequest, useDeclineRefundRequest } from '@/features/refunds/hooks';
-import type { RefundRequest } from '@/features/refunds/api';
+import { useQuery } from '@tanstack/react-query';
+import { getRefundDiagnostics, type RefundRequest } from '@/features/refunds/api';
 import { currency } from '@/lib/utils';
 
 export function RefundsPage() {
@@ -18,6 +19,14 @@ export function RefundsPage() {
 	const [selected, setSelected] = useState<RefundRequest | null>(null);
 	const [reviewMode, setReviewMode] = useState<'approve' | 'decline' | null>(null);
 	const [note, setNote] = useState('');
+
+	const [diagnosticId, setDiagnosticId] = useState<string | null>(null);
+	const diagnostics = useQuery({
+		queryKey: ['refund-diagnostics', diagnosticId],
+		queryFn: () => getRefundDiagnostics(diagnosticId!),
+		enabled: !!diagnosticId, retry: false, refetchOnWindowFocus: false,
+	});
+	const result = diagnostics.data;
 
 	const refunded = refunds.filter((refund) => refund.status === 'succeeded');
 	const requested = refunds.filter((refund) => refund.status === 'requested');
@@ -76,6 +85,7 @@ export function RefundsPage() {
 						onClick={() => setSelected(row)}>
 						View
 					</button>
+					<button type="button" className="rounded-lg px-2 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50" onClick={() => setDiagnosticId(row.id)}>Diagnose refund</button>
 					{row.status === 'requested' ? (
 						<>
 							<button
@@ -126,6 +136,22 @@ export function RefundsPage() {
 				<MetricCard title='Disputes' value='0' helper='Chargebacks requiring evidence' icon={<AlertTriangle size={22} />} />
 			</div>
 
+			<Modal open={!!diagnosticId} onClose={() => setDiagnosticId(null)} title="Refund diagnostics" description="Reads Venue Spice and Stripe records. No money is moved.">
+				{diagnostics.isFetching ? <p role="status">Checking this refund…</p> : diagnostics.isError ? <p role="alert">Could not load diagnostics. <button onClick={() => diagnostics.refetch()}>Try again</button></p> : result ? <div className="space-y-3 text-sm">
+					<p><strong>{result.finding.replace(/_/g,' ')}</strong> · {result.detail}</p>
+					<p>{result.retry}</p>
+					<dl className="grid grid-cols-[auto_1fr] gap-2 break-all">
+						<dt>Order</dt><dd>{result.orderId}</dd><dt>Refund request</dt><dd>{result.id}</dd>
+						<dt>Venue Spice</dt><dd>{result.localStatus} · {new Intl.NumberFormat(undefined,{style:'currency',currency:result.currency}).format(result.localAmount)}</dd>
+						<dt>Approval time</dt><dd>{result.reviewedAt ? new Date(result.reviewedAt).toISOString() : 'Not recorded'}</dd>
+						<dt>Approval audit entry</dt><dd>{result.approvalAuditFound ? 'Found' : 'Not found'}</dd>
+						<dt>Stripe payment</dt><dd>{result.paymentId || 'Not recorded'}</dd>
+						<dt>Saved refund ID</dt><dd>{result.localRefundId || 'Not recorded'}</dd>
+						<dt>Saved Stripe error</dt><dd>{result.providerError || 'None recorded'}</dd>
+					</dl>
+					{result.providerRefunds.map(p => <p key={p.id}>{p.id} · {p.status} · {p.amount} {p.currency.toUpperCase()}</p>)}
+				</div> : null}
+			</Modal>
 			<AdminRefundTools requestToApprove={requestToApprove} onCloseRequest={()=>setRequestToApprove(null)} />
 
 			<DataTable

@@ -4,6 +4,10 @@ export type WithdrawalRequest = {
 	id: string;
 	status: 'pending_review' | 'approved' | 'processing' | 'paid' | 'rejected' | 'failed' | 'cancelled';
 	amount: number;
+	withdrawalType?: 'normal' | 'early' | 'instant';
+	feePercent?: number;
+	feeAmount?: number;
+	netAmount?: number | null;
 	currency: string;
 	availableBalanceSnapshot: number;
 	stripeAccountId?: string | null;
@@ -12,6 +16,7 @@ export type WithdrawalRequest = {
 	requesterNote?: string | null;
 	adminNote?: string | null;
 	stripeTransferId?: string | null;
+	stripePayoutId?: string | null;
 	organization?: {
 		id: string;
 		name: string;

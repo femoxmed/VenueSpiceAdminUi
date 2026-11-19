@@ -12,6 +12,8 @@ export type PricingSettings = {
 	stripeTaxBehavior: 'exclusive' | 'inclusive' | 'unspecified';
 	supportedTaxRegions: string;
 	allowOrganizerManualTax: boolean;
+	earlyWithdrawalEnabled: boolean;
+	earlyWithdrawalFeePercent: number;
 };
 
 export type PlatformSetting = {

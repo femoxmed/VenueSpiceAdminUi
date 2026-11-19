@@ -59,7 +59,7 @@ export function WithdrawalsPage() {
 		{
 			key: 'amount',
 			header: 'Amount',
-			render: (row) => currency(row.amount, row.currency),
+			render: (row) => <div><div>{currency(row.amount, row.currency)}</div><div className='text-xs text-slate-500'>{withdrawalTypeLabel(row)}</div></div>,
 			searchValue: (row) => String(row.amount),
 			sortValue: (row) => Number(row.amount || 0),
 		},
@@ -181,10 +181,14 @@ export function WithdrawalsPage() {
 							<Detail label='Payee' value={selected.organization?.name ?? 'Unknown'} />
 							<Detail label='Requested by' value={selected.requestedByEmail ?? 'Unknown'} />
 							<Detail label='Amount' value={currency(selected.amount, selected.currency)} />
+							<Detail label='Withdrawal type' value={withdrawalTypeLabel(selected)} />
+							<Detail label='Venue Spice fee' value={currency(Number(selected.feeAmount || 0), selected.currency)} />
+							<Detail label='Organizer receives' value={currency(Number(selected.netAmount ?? selected.amount), selected.currency)} />
 							<Detail label='Available at request' value={currency(selected.availableBalanceSnapshot, selected.currency)} />
 							<Detail label='Status' value={selected.status.replace(/_/g, ' ')} />
 							<Detail label='Stripe account' value={selected.stripeAccountId ?? 'Not available'} />
 							<Detail label='Stripe transfer' value={selected.stripeTransferId ?? 'Not paid yet'} />
+							<Detail label='Stripe payout' value={selected.stripePayoutId ?? 'Not paid yet'} />
 							<Detail label='Requested' value={formatDate(selected.createdAt)} />
 						</div>
 						<DetailBlock label='Payee note' value={selected.requesterNote || 'No note provided.'} />
@@ -211,7 +215,7 @@ export function WithdrawalsPage() {
 							<p className='rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800'>
 								{isInfluencerWithdrawal(selected)
 									? 'Paying this request will attempt a Stripe transfer and mark the reserved influencer commissions as withdrawn.'
-									: 'Paying this request will attempt a Stripe transfer and mark the selected organizer ledger entries as paid out.'} Current Stripe available balance is {currency(stripeAvailable)}.
+									: `Paying this ${withdrawalTypeLabel(selected).toLowerCase()} request will send ${currency(Number(selected.netAmount ?? selected.amount), selected.currency)} to the organizer and record the ${selected.withdrawalType === 'instant' ? 'Stripe payout' : 'Stripe transfer'}. Venue Spice retains ${currency(Number(selected.feeAmount || 0), selected.currency)}. Current Stripe available balance is ${currency(stripeAvailable)}.`}
 							</p>
 						) : null}
 					</div>
@@ -233,6 +237,12 @@ function organizerWithdrawalMessage(request: WithdrawalRequest) {
 
 function isInfluencerWithdrawal(request: WithdrawalRequest) {
 	return request.metadata?.beneficiaryType === 'influencer';
+}
+
+function withdrawalTypeLabel(request: WithdrawalRequest) {
+	if (request.withdrawalType === 'instant') return 'Instant (3% fee)';
+	if (request.withdrawalType === 'early') return 'Early standard (1% fee)';
+	return 'Standard (no fee after hold)';
 }
 
 function sumStripeBalance(items?: Array<{ amount: number; currency: string }>) {

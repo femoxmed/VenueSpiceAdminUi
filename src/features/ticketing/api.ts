@@ -37,6 +37,9 @@ export type Organization = {
 	payoutPolicyReason?: string | null;
 	payoutPolicyRefundRiskAcceptedAt?: string | null;
 	payoutPolicyRefundRiskAcceptedBy?: string | null;
+	earlyWithdrawalEnabled?: boolean;
+	earlyWithdrawalFeePercent?: number | string | null;
+	earlyWithdrawalFeeReason?: string | null;
 	createdAt: string;
 };
 
@@ -110,6 +113,8 @@ export const ticketingApi = {
 			method: 'PATCH',
 			body: JSON.stringify(payload),
 		}),
+	updateOrganizationEarlyWithdrawalPolicy: (id: string, payload: { enabled: boolean; feePercent?: number; reason?: string }) =>
+		apiClient<Organization>(`/organizations/${id}/early-withdrawal-policy`, { method: 'PATCH', body: JSON.stringify(payload) }),
 	events: (organizationId?: string) =>
 		apiClient<Event[]>('/events', { query: { organizationId } }),
 	createEvent: (payload: CreateEventPayload) =>

@@ -16,6 +16,8 @@ const initialForm: PricingSettings = {
 	stripeTaxBehavior: 'exclusive',
 	supportedTaxRegions: 'US:TX',
 	allowOrganizerManualTax: true,
+	earlyWithdrawalEnabled: true,
+	earlyWithdrawalFeePercent: 0.07,
 };
 
 export function PlatformSettingsPage() {
@@ -77,6 +79,17 @@ export function PlatformSettingsPage() {
 						step='0.001'
 						onChange={(value) => setForm((current) => ({ ...current, paymentProcessingFeePercent: value }))}
 					/>
+						<NumberField
+							label='Default early withdrawal fee percent'
+							helper='Use decimal format. 0.07 means 7%.'
+							value={form.earlyWithdrawalFeePercent}
+							step='0.001'
+							onChange={(value) => setForm((current) => ({ ...current, earlyWithdrawalFeePercent: value }))}
+						/>
+						<label className='flex items-start gap-3 rounded-lg border border-slate-200 p-4'>
+							<input type='checkbox' checked={form.earlyWithdrawalEnabled} onChange={(event) => setForm((current) => ({ ...current, earlyWithdrawalEnabled: event.target.checked }))} className='mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/20' />
+							<span><span className='block text-sm font-medium text-slate-700'>Enable early withdrawals</span><span className='mt-1 block text-xs text-slate-500'>Organizers pay this fee to release funds before the normal hold period.</span></span>
+						</label>
 						<NumberField
 							label='Processing fixed fee per order'
 							helper='Example: 0.30'

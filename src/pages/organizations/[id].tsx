@@ -22,7 +22,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useToast } from '@/components/shared/toast-provider';
 import { usePlatformSettings } from '@/features/platform-settings/hooks';
-import { useAgents, useEvents, useOrganization, useUpdateOrganizationDeal, useUpdateOrganizationPayoutPolicy } from '@/features/ticketing/hooks';
+import { useAgents, useEvents, useOrganization, useUpdateOrganizationDeal, useUpdateOrganizationPayoutPolicy, useUpdateOrganizationEarlyWithdrawalPolicy } from '@/features/ticketing/hooks';
 import type { Organization } from '@/features/ticketing/api';
 
 const typeCopy: Record<
@@ -137,6 +137,7 @@ export function OrganizationDetailPage() {
 				<>
 					<OrganizerDealCard organization={organization} />
 					<OrganizerPayoutPolicyCard organization={organization} />
+					<EarlyWithdrawalPolicyCard organization={organization} />
 				</>
 			) : null}
 
@@ -242,6 +243,19 @@ export function OrganizationDetailPage() {
 			</div>
 		</section>
 	);
+}
+
+function EarlyWithdrawalPolicyCard({ organization }: { organization: Organization }) {
+	const { push } = useToast();
+	const update = useUpdateOrganizationEarlyWithdrawalPolicy();
+	const [enabled, setEnabled] = useState(Boolean(organization.earlyWithdrawalEnabled));
+	const [feePercent, setFeePercent] = useState(decimalToPercentInput(organization.earlyWithdrawalFeePercent));
+	const [reason, setReason] = useState(organization.earlyWithdrawalFeeReason || '');
+	async function save() {
+		try { await update.mutateAsync({ id: organization.id, payload: { enabled, feePercent: Number(feePercent) / 100, reason } }); push({ title: 'Early withdrawal policy saved', description: 'The organizer will see the updated fee when requesting an early payout.' }); }
+		catch (error) { push({ title: 'Could not save early withdrawal policy', description: error instanceof Error ? error.message : 'Please try again.', variant: 'error' }); }
+	}
+	return <div className='card p-6'><h3 className='text-lg font-semibold text-slate-950'>Early withdrawal policy</h3><p className='mt-1 text-sm text-slate-500'>Allow this organizer to bypass the normal payout hold for a fee. The fee is snapshotted on every request.</p><div className='mt-4 grid gap-4 md:grid-cols-3'><label className='flex items-center gap-2 text-sm font-semibold'><input type='checkbox' checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> Enabled</label><label className='space-y-2'><span className='text-sm font-semibold text-slate-700'>Fee percent</span><input type='number' min='0' max='100' step='0.1' value={feePercent} onChange={(e) => setFeePercent(e.target.value)} className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm' /></label><label className='space-y-2'><span className='text-sm font-semibold text-slate-700'>Reason / note</span><input value={reason} onChange={(e) => setReason(e.target.value)} className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm' /></label></div><button type='button' onClick={save} disabled={update.isPending} className='mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60'>{update.isPending ? 'Saving...' : 'Save early withdrawal policy'}</button></div>;
 }
 
 function OrganizerDealCard({ organization }: { organization: Organization }) {
