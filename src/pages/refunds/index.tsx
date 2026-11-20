@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useRefundRequests, useApproveRefundRequest, useDeclineRefundRequest } from '@/features/refunds/hooks';
 import { useQuery } from '@tanstack/react-query';
-import { getRefundDiagnostics, type RefundRequest } from '@/features/refunds/api';
+import { getRefundDiagnostics, reconcileStripeRefund, reconcileExternalRefund, cancelRefundRequest, type RefundRequest } from '@/features/refunds/api';
 import { currency } from '@/lib/utils';
 
 export function RefundsPage() {
@@ -27,6 +27,9 @@ export function RefundsPage() {
 		enabled: !!diagnosticId, retry: false, refetchOnWindowFocus: false,
 	});
 	const result = diagnostics.data;
+	const reconcileStripe = async (id: string) => { await reconcileStripeRefund(id); window.location.reload(); };
+	const reconcileExternal = async (row: RefundRequest) => { const method = window.prompt('External refund method (cash, bank transfer, other):'); if (!method) return; const reference = window.prompt('External reference (optional):') || undefined; const note = window.prompt('Reconciliation note (required):'); if (!note) return; await reconcileExternalRefund(row.id, { amount: Number(row.amount), method, reference, note }); window.location.reload(); };
+	const cancelRequest = async (id: string) => { const reason = window.prompt('Cancellation reason (required):'); if (!reason) return; await cancelRefundRequest(id, reason); window.location.reload(); };
 
 	const refunded = refunds.filter((refund) => refund.status === 'succeeded');
 	const requested = refunds.filter((refund) => refund.status === 'requested');
@@ -86,6 +89,9 @@ export function RefundsPage() {
 						View
 					</button>
 					<button type="button" className="rounded-lg px-2 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50" onClick={() => setDiagnosticId(row.id)}>Diagnose refund</button>
+					<button type="button" className="rounded-lg px-2 py-1 text-sm font-medium text-indigo-600 hover:bg-indigo-50" onClick={() => reconcileStripe(row.id)}>Retry Stripe reconciliation</button>
+					<button type="button" className="rounded-lg px-2 py-1 text-sm font-medium text-emerald-600 hover:bg-emerald-50" onClick={() => reconcileExternal(row)}>External refund</button>
+					{!['succeeded','manually_reconciled','cancelled'].includes(row.status) ? <button type="button" className="rounded-lg px-2 py-1 text-sm font-medium text-red-600 hover:bg-red-50" onClick={() => cancelRequest(row.id)}>Cancel request</button> : null}
 					{row.status === 'requested' ? (
 						<>
 							<button
