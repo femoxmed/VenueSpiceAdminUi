@@ -13,6 +13,7 @@ const actionOptions = [
 	'user.updated',
 	'user.activated',
 	'user.deactivated',
+	'user_balance.reconciled',
 	'organization.created',
 	'organization.updated',
 	'vendor_catalogue.created',

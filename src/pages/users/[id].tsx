@@ -1,10 +1,12 @@
-import { ArrowLeft, Mail, Phone, ShieldCheck, UserRound } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, Mail, Phone, Scale, ShieldCheck, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useUser } from '@/features/users/hooks';
 import { UserPurchaseHistory } from '@/components/shared/user-purchase-history';
+import { UserReconciliationModal } from '@/features/reconciliation/UserReconciliationModal';
 
 const roleLabels: Record<string, string> = {
 	super_admin: 'Super Admin',
@@ -20,6 +22,7 @@ const roleLabels: Record<string, string> = {
 export function UserDetailPage() {
 	const { id = '' } = useParams();
 	const { data: user, isLoading, error } = useUser(id);
+	const [reconcileOpen, setReconcileOpen] = useState(false);
 
 	if (isLoading) {
 		return <div className='card p-6 text-sm text-slate-500'>Loading user...</div>;
@@ -45,12 +48,22 @@ export function UserDetailPage() {
 				title={user.fullName || user.email}
 				description='Account details and ticket purchase history for this user.'
 				action={
-					<Link
-						to='/users'
-						className='inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50'>
-						<ArrowLeft size={16} />
-						Back
-					</Link>
+					<div className='flex items-center gap-3'>
+						<button
+							type='button'
+							onClick={() => setReconcileOpen(true)}
+							className='inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800'
+						>
+							<Scale size={16} />
+							Reconcile Balance
+						</button>
+						<Link
+							to='/users'
+							className='inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50'>
+							<ArrowLeft size={16} />
+							Back
+						</Link>
+					</div>
 				}
 			/>
 
@@ -98,6 +111,13 @@ export function UserDetailPage() {
 				</div>
 			</div>
 			<UserPurchaseHistory key={user.id} userId={user.id} />
+
+			<UserReconciliationModal
+				userId={user.id}
+				userName={user.fullName || user.email}
+				open={reconcileOpen}
+				onClose={() => setReconcileOpen(false)}
+			/>
 		</section>
 	);
 }

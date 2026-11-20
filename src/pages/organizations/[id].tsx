@@ -13,6 +13,7 @@ import {
 	Store,
 	UserRound,
 	UsersRound,
+	Scale,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -24,6 +25,7 @@ import { useToast } from '@/components/shared/toast-provider';
 import { usePlatformSettings } from '@/features/platform-settings/hooks';
 import { useAgents, useEvents, useOrganization, useUpdateOrganizationDeal, useUpdateOrganizationPayoutPolicy, useUpdateOrganizationEarlyWithdrawalPolicy } from '@/features/ticketing/hooks';
 import type { Organization } from '@/features/ticketing/api';
+import { OrganizationReconciliationModal } from '@/features/reconciliation/OrganizationReconciliationModal';
 
 const typeCopy: Record<
 	NonNullable<Organization['type']>,
@@ -52,6 +54,7 @@ const typeCopy: Record<
 export function OrganizationDetailPage() {
 	const { id = '' } = useParams();
 	const { data: organization, isLoading, error } = useOrganization(id);
+	const [reconcileOpen, setReconcileOpen] = useState(false);
 	const { data: events = [] } = useEvents(id);
 	const { data: agents = [] } = useAgents();
 
@@ -83,12 +86,22 @@ export function OrganizationDetailPage() {
 				title={organization.name}
 				description={copy.description}
 				action={
-					<Link
-						to='/organizations'
-						className='inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50'>
-						<ArrowLeft size={16} />
-						Back
-					</Link>
+					<div className='flex items-center gap-3'>
+						<button
+							type='button'
+							onClick={() => setReconcileOpen(true)}
+							className='inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800'
+						>
+							<Scale size={16} />
+							Reconcile Balance
+						</button>
+						<Link
+							to='/organizations'
+							className='inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50'>
+							<ArrowLeft size={16} />
+							Back
+						</Link>
+					</div>
 				}
 			/>
 
@@ -241,6 +254,13 @@ export function OrganizationDetailPage() {
 					<DetailItem label='Created at' value={formatDateTime(organization.createdAt)} />
 				</div>
 			</div>
+
+			<OrganizationReconciliationModal
+				organizationId={organization.id}
+				organizationName={organization.name}
+				open={reconcileOpen}
+				onClose={() => setReconcileOpen(false)}
+			/>
 		</section>
 	);
 }
