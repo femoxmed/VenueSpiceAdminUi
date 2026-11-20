@@ -14,6 +14,9 @@ export type PricingSettings = {
 	allowOrganizerManualTax: boolean;
 	earlyWithdrawalEnabled: boolean;
 	earlyWithdrawalFeePercent: number;
+	standardWithdrawalFeePercent: number;
+	instantWithdrawalFeePercent: number;
+	organizerReservePercent: number;
 };
 
 export type PlatformSetting = {

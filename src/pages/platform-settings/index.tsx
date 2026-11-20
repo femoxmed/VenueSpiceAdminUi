@@ -18,6 +18,9 @@ const initialForm: PricingSettings = {
 	allowOrganizerManualTax: true,
 	earlyWithdrawalEnabled: true,
 	earlyWithdrawalFeePercent: 0.07,
+	standardWithdrawalFeePercent: 0.01,
+	instantWithdrawalFeePercent: 0.03,
+	organizerReservePercent: 0.2,
 };
 
 export function PlatformSettingsPage() {
@@ -58,6 +61,15 @@ export function PlatformSettingsPage() {
 				</div>
 
 				<div className='mt-6 grid gap-5 md:grid-cols-2'>
+					<div className='md:col-span-2 rounded-xl border border-indigo-100 bg-indigo-50 p-5'>
+						<h2 className='text-lg font-semibold text-slate-950'>Withdrawal policy</h2>
+						<p className='mt-1 text-sm text-slate-600'>Control the reserve and Venue Spice fees applied before organizers receive funds. These values are stored in the database and audited.</p>
+						<div className='mt-4 grid gap-5 md:grid-cols-3'>
+							<NumberField label='Organizer reserve percent' helper='0.20 means 20% held for refunds, disputes, and cancellations.' value={form.organizerReservePercent} step='0.01' onChange={(value) => setForm((current) => ({ ...current, organizerReservePercent: value }))} />
+							<NumberField label='Early standard withdrawal fee' helper='0.01 means 1% before the normal payout hold.' value={form.standardWithdrawalFeePercent} step='0.001' onChange={(value) => setForm((current) => ({ ...current, standardWithdrawalFeePercent: value }))} />
+							<NumberField label='Instant withdrawal fee' helper='0.03 means 3%; organizer receives 97% of eligible funds.' value={form.instantWithdrawalFeePercent} step='0.001' onChange={(value) => setForm((current) => ({ ...current, instantWithdrawalFeePercent: value }))} />
+						</div>
+					</div>
 					<NumberField
 						label='Venue Spice service fee percent'
 						helper='Use decimal format. 0.032 means 3.2%.'
