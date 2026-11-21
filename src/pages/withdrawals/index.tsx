@@ -5,6 +5,7 @@ import { MetricCard } from '@/components/shared/metric-card';
 import { Modal } from '@/components/shared/modal';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { useToast } from '@/components/shared/toast-provider';
 import type { WithdrawalRequest } from '@/features/withdrawals/api';
 import {
 	useApproveWithdrawalRequest,
@@ -18,6 +19,7 @@ import { currency, formatDate } from '@/lib/utils';
 type ReviewMode = 'approve' | 'reject' | 'pay';
 
 export function WithdrawalsPage() {
+	const { push: pushToast } = useToast();
 	const { data: requests = [], isLoading } = useWithdrawalRequests();
 	const stripeBalance = useStripeBalance();
 	const approve = useApproveWithdrawalRequest();
@@ -114,16 +116,28 @@ export function WithdrawalsPage() {
 
 	async function submitReview() {
 		if (!selected || !reviewMode) return;
-		if (reviewMode === 'approve') {
-			await approve.mutateAsync({ id: selected.id, note });
-		} else if (reviewMode === 'reject') {
-			await reject.mutateAsync({ id: selected.id, note });
-		} else {
-			await pay.mutateAsync(selected.id);
+		try {
+			if (reviewMode === 'approve') {
+				await approve.mutateAsync({ id: selected.id, note });
+				pushToast({ title: 'Withdrawal approved', description: 'The withdrawal request has been approved for payout.', variant: 'success' });
+			} else if (reviewMode === 'reject') {
+				await reject.mutateAsync({ id: selected.id, note });
+				pushToast({ title: 'Withdrawal rejected', description: 'The withdrawal request has been rejected.' });
+			} else {
+				await pay.mutateAsync(selected.id);
+				pushToast({ title: 'Payout released', description: 'Transfer was initiated successfully.', variant: 'success' });
+			}
+			setSelected(null);
+			setReviewMode(null);
+			setNote('');
+		} catch (error: any) {
+			const message = error?.response?.data?.message || error?.message || 'Failed to process withdrawal action.';
+			pushToast({
+				title: reviewMode === 'pay' ? 'Payment failed' : reviewMode === 'approve' ? 'Approval failed' : 'Rejection failed',
+				description: Array.isArray(message) ? message.join(', ') : String(message),
+				variant: 'error',
+			});
 		}
-		setSelected(null);
-		setReviewMode(null);
-		setNote('');
 	}
 
 	const busy = approve.isPending || reject.isPending || pay.isPending;
