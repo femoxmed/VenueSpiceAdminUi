@@ -26,6 +26,19 @@ export type OrderHistorySummary = {
 	taxes: number;
 	netEarnings: number;
 	refundedNet: number;
+	refundBreakdown?: Array<{
+		id: string;
+		orderId: string;
+		customerEmail?: string;
+		customerName?: string;
+		refundAmount: number;
+		organizerNetDeduction: number;
+		status: string;
+		reconciliationMethod?: string;
+		orderStatus: string;
+		isFullOrderRefund: boolean;
+		completedAt?: string;
+	}>;
 };
 
 export type LedgerSummary = {
