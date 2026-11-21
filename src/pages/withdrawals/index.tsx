@@ -176,20 +176,40 @@ export function WithdrawalsPage() {
 				}>
 				{selected ? (
 					<div className='space-y-4 text-sm'>
+						<div className='rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-white to-slate-50 p-4'>
+							<p className='text-xs font-semibold uppercase tracking-wider text-indigo-700'>Financial Breakdown</p>
+							<div className='mt-3 grid gap-3 sm:grid-cols-3'>
+								<div className='rounded-lg bg-white p-3 shadow-xs border border-slate-100'>
+									<p className='text-xs font-medium text-slate-500'>Requested Gross</p>
+									<p className='mt-1 text-lg font-semibold text-slate-900'>{currency(selected.amount, selected.currency)}</p>
+									<p className='text-xs text-slate-400'>Organizer withdrawal claim</p>
+								</div>
+								<div className='rounded-lg bg-white p-3 shadow-xs border border-slate-100'>
+									<p className='text-xs font-medium text-slate-500'>Venue Spice Fee</p>
+									<p className='mt-1 text-lg font-semibold text-emerald-700'>{currency(Number(selected.feeAmount || 0), selected.currency)}</p>
+									<p className='text-xs text-slate-400'>
+										{Number(selected.feePercent || 0) > 0 ? `${(Number(selected.feePercent) * 100).toFixed(Number(selected.feePercent) * 100 % 1 === 0 ? 0 : 1)}% platform retention` : 'No fee deducted'}
+									</p>
+								</div>
+								<div className='rounded-lg bg-white p-3 shadow-xs border border-slate-100'>
+									<p className='text-xs font-medium text-slate-500'>Organizer Receives</p>
+									<p className='mt-1 text-lg font-semibold text-indigo-700'>{currency(Number(selected.netAmount ?? (Number(selected.amount) - Number(selected.feeAmount || 0))), selected.currency)}</p>
+									<p className='text-xs text-slate-400'>Net payout via Stripe</p>
+								</div>
+							</div>
+						</div>
+
 						<div className='grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2'>
 							<Detail label='Payee type' value={isInfluencerWithdrawal(selected) ? 'Influencer' : 'Organizer'} />
 							<Detail label='Payee' value={selected.organization?.name ?? 'Unknown'} />
 							<Detail label='Requested by' value={selected.requestedByEmail ?? 'Unknown'} />
-							<Detail label='Amount' value={currency(selected.amount, selected.currency)} />
 							<Detail label='Withdrawal type' value={withdrawalTypeLabel(selected)} />
-							<Detail label='Venue Spice fee' value={currency(Number(selected.feeAmount || 0), selected.currency)} />
-							<Detail label='Organizer receives' value={currency(Number(selected.netAmount ?? selected.amount), selected.currency)} />
 							<Detail label='Available at request' value={currency(selected.availableBalanceSnapshot, selected.currency)} />
 							<Detail label='Status' value={selected.status.replace(/_/g, ' ')} />
 							<Detail label='Stripe account' value={selected.stripeAccountId ?? 'Not available'} />
 							<Detail label='Stripe transfer' value={selected.stripeTransferId ?? 'Not paid yet'} />
 							<Detail label='Stripe payout' value={selected.stripePayoutId ?? 'Not paid yet'} />
-							<Detail label='Requested' value={formatDate(selected.createdAt)} />
+							<Detail label='Requested date' value={formatDate(selected.createdAt)} />
 						</div>
 						<DetailBlock label='Payee note' value={selected.requesterNote || 'No note provided.'} />
 						{selected.status === 'failed' ? (
@@ -200,23 +220,34 @@ export function WithdrawalsPage() {
 						) : (
 							<DetailBlock label='Admin note' value={selected.adminNote || 'No admin note yet.'} />
 						)}
+						{reviewMode === 'approve' ? (
+							<div className='rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-emerald-900'>
+								<p className='font-medium'>Approval summary:</p>
+								<p className='mt-1 text-xs text-emerald-800 leading-relaxed'>
+									Approving this request verifies that the organizer's account has sufficient eligible balance ({currency(Number(selected.amount), selected.currency)}). Once approved, the request moves to the admin payout queue where an admin can release the net transfer of {currency(Number(selected.netAmount ?? (Number(selected.amount) - Number(selected.feeAmount || 0))), selected.currency)}.
+								</p>
+							</div>
+						) : null}
 						{reviewMode && reviewMode !== 'pay' ? (
 							<label className='block'>
 								<span className='font-medium text-slate-900'>Review note</span>
 								<textarea
 									value={note}
 									onChange={(event) => setNote(event.target.value)}
-									className='mt-2 min-h-28 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-secondary'
-									placeholder='Add an internal note for this decision'
+									className='mt-2 min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-secondary'
+									placeholder='Add an optional internal note for this decision'
 								/>
 							</label>
 						) : null}
 						{reviewMode === 'pay' ? (
-							<p className='rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800'>
-								{isInfluencerWithdrawal(selected)
-									? 'Paying this request will attempt a Stripe transfer and mark the reserved influencer commissions as withdrawn.'
-									: `Paying this ${withdrawalTypeLabel(selected).toLowerCase()} request will send ${currency(Number(selected.netAmount ?? selected.amount), selected.currency)} to the organizer and record the ${selected.withdrawalType === 'instant' ? 'Stripe payout' : 'Stripe transfer'}. Venue Spice retains ${currency(Number(selected.feeAmount || 0), selected.currency)}. Current Stripe available balance is ${currency(stripeAvailable)}.`}
-							</p>
+							<div className='space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900'>
+								<p className='font-medium'>Payment confirmation:</p>
+								<p className='text-xs text-amber-800 leading-relaxed'>
+									{isInfluencerWithdrawal(selected)
+										? 'Paying this request will attempt a Stripe transfer and mark the reserved influencer commissions as withdrawn.'
+										: `Paying this request will transfer ${currency(Number(selected.netAmount ?? (Number(selected.amount) - Number(selected.feeAmount || 0))), selected.currency)} directly to the organizer's connected Stripe account (${selected.stripeAccountId ?? 'account'}). Venue Spice retains ${currency(Number(selected.feeAmount || 0), selected.currency)} as platform fees. Current Stripe platform available balance is ${currency(stripeAvailable)}.`}
+								</p>
+							</div>
 						) : null}
 					</div>
 				) : null}
@@ -239,11 +270,13 @@ function isInfluencerWithdrawal(request: WithdrawalRequest) {
 	return request.metadata?.beneficiaryType === 'influencer';
 }
 
-function withdrawalTypeLabel(request: WithdrawalRequest) {
-	if (request.withdrawalType === 'instant') return 'Instant (3% fee)';
-	if (request.withdrawalType === 'early') return 'Early standard (1% fee)';
-	return 'Standard (no fee after hold)';
-}
+	function withdrawalTypeLabel(request: WithdrawalRequest) {
+		const feePct = Number(request.feePercent ?? 0);
+		const feeLabel = feePct > 0 ? ` (${(feePct * 100).toFixed(feePct * 100 % 1 === 0 ? 0 : 1)}% fee)` : ' (no fee)';
+		if (request.withdrawalType === 'instant') return `Instant${feeLabel}`;
+		if (request.withdrawalType === 'early') return `Early standard${feeLabel}`;
+		return 'Standard (no fee after hold)';
+	}
 
 function sumStripeBalance(items?: Array<{ amount: number; currency: string }>) {
 	return (items ?? [])
