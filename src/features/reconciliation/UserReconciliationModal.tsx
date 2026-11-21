@@ -238,19 +238,46 @@ export function UserReconciliationModal({
 												<div className="space-y-1.5 rounded-xl bg-slate-50 p-3">
 													<span className="font-semibold text-slate-700">Order History</span>
 													<div className="flex justify-between text-slate-600">
-														<span>Paid Orders:</span>
-														<span>{org.orderHistorySummary.completedPaidOrdersCount}</span>
-													</div>
-													<div className="flex justify-between text-slate-600">
-														<span>Gross Sales:</span>
-														<span>{formatMoney(org.orderHistorySummary.grossSales, org.currency)}</span>
-													</div>
-													<div className="flex justify-between text-slate-600">
-														<span>Fees (Platform & Proc):</span>
+														<span>Paid Orders / Tickets:</span>
 														<span>
-															-{formatMoney(org.orderHistorySummary.platformFees + org.orderHistorySummary.processingFees, org.currency)}
+															{org.orderHistorySummary.completedPaidOrdersCount} orders
+															{org.orderHistorySummary.ticketsSold ? ` (${org.orderHistorySummary.ticketsSold} tix)` : ''}
 														</span>
 													</div>
+													{org.orderHistorySummary.buyerPaid && org.orderHistorySummary.buyerPaid > org.orderHistorySummary.grossSales ? (
+														<div className="flex justify-between text-slate-600">
+															<span>Total Buyer Paid:</span>
+															<span>{formatMoney(org.orderHistorySummary.buyerPaid, org.currency)}</span>
+														</div>
+													) : null}
+													<div className="flex justify-between text-slate-600">
+														<span>Ticket Base Sales (Gross):</span>
+														<span>{formatMoney(org.orderHistorySummary.grossSales, org.currency)}</span>
+													</div>
+													{org.orderHistorySummary.organizerPlatformFees != null || org.orderHistorySummary.organizerProcessingFees != null ? (
+														(Number(org.orderHistorySummary.organizerPlatformFees || 0) + Number(org.orderHistorySummary.organizerProcessingFees || 0)) > 0 ? (
+															<div className="flex justify-between text-amber-700">
+																<span>Fees (Absorbed):</span>
+																<span>
+																	-{formatMoney(Number(org.orderHistorySummary.organizerPlatformFees || 0) + Number(org.orderHistorySummary.organizerProcessingFees || 0), org.currency)}
+																</span>
+															</div>
+														) : (
+															<div className="flex justify-between text-slate-500">
+																<span>Fees (Paid by Buyer):</span>
+																<span>
+																	{formatMoney(org.orderHistorySummary.platformFees + org.orderHistorySummary.processingFees, org.currency)}
+																</span>
+															</div>
+														)
+													) : (
+														<div className="flex justify-between text-slate-600">
+															<span>Fees (Platform & Proc):</span>
+															<span>
+																{formatMoney(org.orderHistorySummary.platformFees + org.orderHistorySummary.processingFees, org.currency)}
+															</span>
+														</div>
+													)}
 													<div className="flex justify-between font-semibold text-primary pt-1 border-t border-slate-200">
 														<span>Calculated Net Earnings:</span>
 														<span>{formatMoney(org.orderHistorySummary.netEarnings, org.currency)}</span>

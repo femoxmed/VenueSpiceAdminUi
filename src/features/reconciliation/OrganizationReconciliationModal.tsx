@@ -170,33 +170,74 @@ export function OrganizationReconciliationModal({
 							</div>
 							<div className="mt-3 space-y-2 text-xs">
 								<div className="flex justify-between">
-									<span className="text-slate-500">Paid Completed Orders:</span>
+									<span className="text-slate-500">Completed Orders / Tickets:</span>
 									<span className="font-medium text-slate-800">
 										{data.orderHistorySummary.completedPaidOrdersCount} orders
+										{data.orderHistorySummary.ticketsSold ? ` (${data.orderHistorySummary.ticketsSold} tickets)` : ''}
 									</span>
 								</div>
+								{data.orderHistorySummary.buyerPaid && data.orderHistorySummary.buyerPaid > data.orderHistorySummary.grossSales ? (
+									<div className="flex justify-between">
+										<span className="text-slate-500">Total Buyer Paid:</span>
+										<span className="font-medium text-slate-800">
+											{formatMoney(data.orderHistorySummary.buyerPaid, data.currency)}
+										</span>
+									</div>
+								) : null}
 								<div className="flex justify-between">
-									<span className="text-slate-500">Gross Sales:</span>
+									<span className="text-slate-500">Ticket Base Sales (Gross):</span>
 									<span className="font-medium text-slate-800">
 										{formatMoney(data.orderHistorySummary.grossSales, data.currency)}
 									</span>
 								</div>
-								<div className="flex justify-between">
-									<span className="text-slate-500">Platform Fees:</span>
-									<span className="font-medium text-slate-800">
-										-{formatMoney(data.orderHistorySummary.platformFees, data.currency)}
-									</span>
-								</div>
-								<div className="flex justify-between">
-									<span className="text-slate-500">Processing Fees:</span>
-									<span className="font-medium text-slate-800">
-										-{formatMoney(data.orderHistorySummary.processingFees, data.currency)}
-									</span>
-								</div>
-								{data.orderHistorySummary.influencerCommissions > 0 ? (
+								{data.orderHistorySummary.organizerPlatformFees != null && data.orderHistorySummary.organizerPlatformFees > 0 ? (
+									<div className="flex justify-between text-amber-700">
+										<span>Platform Fees (Absorbed):</span>
+										<span className="font-medium">
+											-{formatMoney(data.orderHistorySummary.organizerPlatformFees, data.currency)}
+										</span>
+									</div>
+								) : data.orderHistorySummary.buyerPlatformFees != null && data.orderHistorySummary.buyerPlatformFees > 0 ? (
+									<div className="flex justify-between text-slate-500">
+										<span>Platform Fees (Paid by Buyer):</span>
+										<span className="font-medium text-slate-600">
+											{formatMoney(data.orderHistorySummary.buyerPlatformFees, data.currency)}
+										</span>
+									</div>
+								) : (
 									<div className="flex justify-between">
-										<span className="text-slate-500">Influencer Commissions:</span>
+										<span className="text-slate-500">Platform Fees:</span>
 										<span className="font-medium text-slate-800">
+											{formatMoney(data.orderHistorySummary.platformFees, data.currency)}
+										</span>
+									</div>
+								)}
+								{data.orderHistorySummary.organizerProcessingFees != null && data.orderHistorySummary.organizerProcessingFees > 0 ? (
+									<div className="flex justify-between text-amber-700">
+										<span>Processing Fees (Absorbed):</span>
+										<span className="font-medium">
+											-{formatMoney(data.orderHistorySummary.organizerProcessingFees, data.currency)}
+										</span>
+									</div>
+								) : data.orderHistorySummary.buyerProcessingFees != null && data.orderHistorySummary.buyerProcessingFees > 0 ? (
+									<div className="flex justify-between text-slate-500">
+										<span>Processing Fees (Paid by Buyer):</span>
+										<span className="font-medium text-slate-600">
+											{formatMoney(data.orderHistorySummary.buyerProcessingFees, data.currency)}
+										</span>
+									</div>
+								) : (
+									<div className="flex justify-between">
+										<span className="text-slate-500">Processing Fees:</span>
+										<span className="font-medium text-slate-800">
+											{formatMoney(data.orderHistorySummary.processingFees, data.currency)}
+										</span>
+									</div>
+								)}
+								{data.orderHistorySummary.influencerCommissions > 0 ? (
+									<div className="flex justify-between text-amber-700">
+										<span>Influencer Commissions:</span>
+										<span className="font-medium">
 											-{formatMoney(data.orderHistorySummary.influencerCommissions, data.currency)}
 										</span>
 									</div>

@@ -10,12 +10,18 @@ export type BalanceSnapshot = {
 
 export type OrderHistorySummary = {
 	completedPaidOrdersCount: number;
+	ticketsSold?: number;
 	refundedOrdersCount: number;
 	partialRefundsCount?: number;
 	partialRefundsDeduction?: number;
 	grossSales: number;
+	buyerPaid?: number;
 	platformFees: number;
 	processingFees: number;
+	organizerPlatformFees?: number;
+	organizerProcessingFees?: number;
+	buyerPlatformFees?: number;
+	buyerProcessingFees?: number;
 	influencerCommissions: number;
 	taxes: number;
 	netEarnings: number;
