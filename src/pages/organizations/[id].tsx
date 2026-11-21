@@ -23,7 +23,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useToast } from '@/components/shared/toast-provider';
 import { usePlatformSettings } from '@/features/platform-settings/hooks';
-import { useAgents, useEvents, useOrganization, useUpdateOrganizationDeal, useUpdateOrganizationPayoutPolicy, useUpdateOrganizationEarlyWithdrawalPolicy } from '@/features/ticketing/hooks';
+import { useAgents, useEvents, useOrganization, useUpdateOrganizationDeal, useUpdateOrganizationPayoutPolicy, useUpdateOrganizationEarlyWithdrawalPolicy, useUpdateOrganizationReserveExemption } from '@/features/ticketing/hooks';
 import type { Organization } from '@/features/ticketing/api';
 import { OrganizationReconciliationModal } from '@/features/reconciliation/OrganizationReconciliationModal';
 
@@ -151,6 +151,7 @@ export function OrganizationDetailPage() {
 					<OrganizerDealCard organization={organization} />
 					<OrganizerPayoutPolicyCard organization={organization} />
 					<EarlyWithdrawalPolicyCard organization={organization} />
+					<ReserveExemptionCard organization={organization} />
 				</>
 			) : null}
 
@@ -276,6 +277,82 @@ function EarlyWithdrawalPolicyCard({ organization }: { organization: Organizatio
 		catch (error) { push({ title: 'Could not save early withdrawal policy', description: error instanceof Error ? error.message : 'Please try again.', variant: 'error' }); }
 	}
 	return <div className='card p-6'><h3 className='text-lg font-semibold text-slate-950'>Early withdrawal policy</h3><p className='mt-1 text-sm text-slate-500'>Allow this organizer to bypass the normal payout hold for a fee. The fee is snapshotted on every request.</p><div className='mt-4 grid gap-4 md:grid-cols-3'><label className='flex items-center gap-2 text-sm font-semibold'><input type='checkbox' checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> Enabled</label><label className='space-y-2'><span className='text-sm font-semibold text-slate-700'>Fee percent</span><input type='number' min='0' max='100' step='0.1' value={feePercent} onChange={(e) => setFeePercent(e.target.value)} className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm' /></label><label className='space-y-2'><span className='text-sm font-semibold text-slate-700'>Reason / note</span><input value={reason} onChange={(e) => setReason(e.target.value)} className='w-full rounded-xl border border-slate-200 px-3 py-2 text-sm' /></label></div><button type='button' onClick={save} disabled={update.isPending} className='mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60'>{update.isPending ? 'Saving...' : 'Save early withdrawal policy'}</button></div>;
+}
+
+function ReserveExemptionCard({ organization }: { organization: Organization }) {
+	const { push } = useToast();
+	const updateExemption = useUpdateOrganizationReserveExemption();
+	const [exempt, setExempt] = useState(Boolean(organization.reserveExempt));
+	const [reason, setReason] = useState(organization.reserveExemptReason || '');
+
+	async function save() {
+		try {
+			await updateExemption.mutateAsync({ id: organization.id, payload: { exempt, reason } });
+			push({
+				title: 'Reserve exemption updated',
+				description: exempt
+					? 'Organizer is now 100% exempt from withheld reserve fees.'
+					: 'Standard platform reserve policy restored.',
+			});
+		} catch (error) {
+			push({
+				title: 'Could not update reserve exemption',
+				description: error instanceof Error ? error.message : 'Please try again.',
+				variant: 'error',
+			});
+		}
+	}
+
+	return (
+		<div className="card p-6">
+			<div className="flex flex-wrap items-center justify-between gap-2">
+				<div>
+					<h3 className="text-lg font-semibold text-slate-950">Withheld Fee & Reserve Exemption</h3>
+					<p className="mt-1 text-sm text-slate-500">
+						Exempt trusted organizers from the platform's rolling risk reserve (0% withheld), allowing them to withdraw 100% of their earnings.
+					</p>
+				</div>
+				<span
+					className={`rounded-full px-3 py-1 text-xs font-semibold ${
+						exempt ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+					}`}
+				>
+					{exempt ? '100% Payout Eligible (Exempt)' : 'Standard Reserve (20% Withheld)'}
+				</span>
+			</div>
+
+			<div className="mt-4 grid gap-4 md:grid-cols-2">
+				<label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+					<input
+						type="checkbox"
+						className="h-4 w-4 rounded border-slate-300 text-primary"
+						checked={exempt}
+						onChange={(e) => setExempt(e.target.checked)}
+					/>
+					<span>Exempt from withheld reserve fee (100% payout)</span>
+				</label>
+
+				<label className="space-y-1">
+					<span className="text-xs font-semibold text-slate-700">Audit Reason / Exemption Agreement</span>
+					<input
+						value={reason}
+						placeholder="e.g. Approved under VIP promoter agreement"
+						onChange={(e) => setReason(e.target.value)}
+						className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+					/>
+				</label>
+			</div>
+
+			<button
+				type="button"
+				onClick={save}
+				disabled={updateExemption.isPending}
+				className="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+			>
+				{updateExemption.isPending ? 'Saving...' : 'Save Reserve Exemption'}
+			</button>
+		</div>
+	);
 }
 
 function OrganizerDealCard({ organization }: { organization: Organization }) {

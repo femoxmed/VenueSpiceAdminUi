@@ -40,6 +40,8 @@ export type Organization = {
 	earlyWithdrawalEnabled?: boolean;
 	earlyWithdrawalFeePercent?: number | string | null;
 	earlyWithdrawalFeeReason?: string | null;
+	reserveExempt?: boolean;
+	reserveExemptReason?: string | null;
 	createdAt: string;
 };
 
@@ -115,6 +117,8 @@ export const ticketingApi = {
 		}),
 	updateOrganizationEarlyWithdrawalPolicy: (id: string, payload: { enabled: boolean; feePercent?: number; reason?: string }) =>
 		apiClient<Organization>(`/organizations/${id}/early-withdrawal-policy`, { method: 'PATCH', body: JSON.stringify(payload) }),
+	updateOrganizationReserveExemption: (id: string, payload: { exempt: boolean; reason?: string }) =>
+		apiClient<Organization>(`/organizations/${id}/reserve-exemption`, { method: 'PATCH', body: JSON.stringify(payload) }),
 	events: (organizationId?: string) =>
 		apiClient<Event[]>('/events', { query: { organizationId } }),
 	createEvent: (payload: CreateEventPayload) =>

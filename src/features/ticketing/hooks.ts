@@ -73,6 +73,17 @@ export function useUpdateOrganizationEarlyWithdrawalPolicy() {
 	});
 }
 
+export function useUpdateOrganizationReserveExemption() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, payload }: { id: string; payload: { exempt: boolean; reason?: string } }) => ticketingApi.updateOrganizationReserveExemption(id, payload),
+		onSuccess: (_data, variables) => {
+			void queryClient.invalidateQueries({ queryKey: ['organizations'] });
+			void queryClient.invalidateQueries({ queryKey: ['organizations', variables.id] });
+		},
+	});
+}
+
 export function useEvents(organizationId?: string) {
 	return useQuery({
 		queryKey: ['events', organizationId ?? 'all'],
