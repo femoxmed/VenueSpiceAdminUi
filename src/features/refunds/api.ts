@@ -55,6 +55,23 @@ export const cancelRefundRequest=(id:string,reason:string)=>apiClient(`/refunds/
 export const getAdminRefundPreview=(orderId:string,cancellationReason:RefundReason,requestId?:string)=>apiClient<AdminRefundPreview>(requestId?`/refunds/requests/${encodeURIComponent(requestId)}/preview`:`/refunds/admin-preview/${encodeURIComponent(orderId)}`,{query:{cancellationReason}});
 export const issueAdminRefund=(orderId:string,reason:string,expectedAmount:number,cancellationReason:RefundReason,refundAmounts:RefundAmounts,requestId?:string)=>apiClient<RefundRequest>(requestId?`/refunds/requests/${encodeURIComponent(requestId)}/approve-selected`:'/refunds/admin-issue',{method:'POST',body:JSON.stringify({orderId,reason,expectedAmount,cancellationReason,refundAmounts,confirmed:true})});
 
+export type RecordExternalRefundPayload = {
+	orderId: string;
+	refundType: 'full' | 'partial';
+	amount: number;
+	stripeRefundId?: string;
+	externalReference?: string;
+	method?: string;
+	reason: string;
+	evidenceUrl?: string;
+};
+
+export const recordExternalStripeRefund = (payload: RecordExternalRefundPayload) =>
+	apiClient<RefundRequest>('/refunds/admin-record-external', {
+		method: 'POST',
+		body: JSON.stringify(payload),
+	});
+
 export const getRefundDiagnostics = (id:string) => apiClient<ReconciliationRow & {
  reviewedAt:string|null; approvalAuditFound:boolean; providerError:string|null; retry:string;
 }>(`/refunds/requests/${encodeURIComponent(id)}/diagnostics`);

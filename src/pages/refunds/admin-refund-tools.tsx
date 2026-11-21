@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Modal } from '@/components/shared/modal';
+import { RecordExternalRefundModal } from './record-external-refund-modal';
 import { getAdminRefundPreview, getRefundReconciliation, issueAdminRefund, type RefundRequest, type AdminRefundPreview, type RefundAmounts, type RefundReason, type ReconciliationReport } from '@/features/refunds/api';
 
 const money=(amount:number,currency:string)=>new Intl.NumberFormat('en-US',{style:'currency',currency}).format(amount);
@@ -14,6 +15,7 @@ export function AdminRefundTools({requestToApprove,onCloseRequest}:{requestToApp
  const [reportBusy,setReportBusy]=useState(false),[reportError,setReportError]=useState('');
  const [attention,setAttention]=useState(false);
  const [open,setOpen]=useState(false),[orderId,setOrderId]=useState(''),[reason,setReason]=useState('');
+ const [externalModalOpen, setExternalModalOpen] = useState(false);
  const [cancellationReason,setCancellationReason]=useState<RefundReason>('voluntary');
  const [amounts,setAmounts]=useState<RefundAmounts>({tickets:0,serviceFee:0,processingFee:0,tax:0});
  const [preview,setPreview]=useState<AdminRefundPreview|null>(null);
@@ -59,7 +61,8 @@ export function AdminRefundTools({requestToApprove,onCloseRequest}:{requestToApp
  function changeAmount(key:keyof RefundAmounts,value:number) {setAmounts(current=>({...current,[key]:value,...(key==='tickets' && preview && preview.subtotal>0 ? {tax:Math.round(preview.tax*Math.min(preview.subtotal,Math.max(0,value))/preview.subtotal*100)/100}: {})}));setConfirmed(false);}
  const rows=report?.rows.filter(r=>!attention||r.needsAttention)||[];
  return <section className='space-y-4 rounded-xl border bg-white p-5'>
-  <div className='flex flex-wrap items-start justify-between gap-4'><div><h3 className='font-semibold'>Refund review tools</h3><p className='mt-1 text-sm text-slate-600'>The reconciliation report only reads records. Issuing a refund is a separate, confirmed action.</p></div><button className={button} onClick={()=>{onCloseRequest?.();setOpen(true);setCancellationReason('voluntary');setOrderId('');setReason('');setPreview(null);setError('');setConfirmed(false);}}>Issue refund by order ID</button></div>
+  <div className='flex flex-wrap items-start justify-between gap-4'><div><h3 className='font-semibold'>Refund review tools</h3><p className='mt-1 text-sm text-slate-600'>The reconciliation report only reads records. Issuing a refund is a separate, confirmed action.</p></div><div className='flex flex-wrap items-center gap-2'><button className={button} onClick={()=>{onCloseRequest?.();setOpen(true);setCancellationReason('voluntary');setOrderId('');setReason('');setPreview(null);setError('');setConfirmed(false);}}>Issue refund by order ID</button><button className={`${button} bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100`} onClick={() => setExternalModalOpen(true)}>Record Stripe / External Refund</button></div></div>
+  <RecordExternalRefundModal open={externalModalOpen} onClose={() => setExternalModalOpen(false)} />
   {result?<p role='status' className='rounded-lg bg-blue-50 p-3 text-sm'>{result}</p>:null}
   <div className='flex flex-wrap items-center gap-3'><button disabled={reportBusy} className={button} onClick={()=>loadReport(1)}>{reportBusy?'Checking Stripe…':'Run read-only reconciliation'}</button>{report?<><button disabled={reportBusy} className={button} onClick={exportPage}>Export this page to CSV</button><label className='flex items-center gap-2 text-sm'><input type='checkbox' checked={attention} onChange={e=>setAttention(e.target.checked)}/>Only needs attention</label></>:null}</div>
   {reportError?<p role='alert' className='text-sm text-red-600'>{reportError}</p>:null}
