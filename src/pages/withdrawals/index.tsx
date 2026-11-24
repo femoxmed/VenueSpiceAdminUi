@@ -47,15 +47,30 @@ export function WithdrawalsPage() {
 		},
 		{
 			key: 'organization',
-			header: 'Payee',
+			header: 'Payee / Event',
 			render: (row) => (
 				<div>
 					<p className='font-medium text-slate-900'>{row.organization?.name ?? 'Payee'}</p>
-					<p className='text-xs font-medium text-indigo-600'>{isInfluencerWithdrawal(row) ? 'Influencer' : 'Organizer'}</p>
+					<div className='flex items-center gap-1.5'>
+						<span className='text-xs font-medium text-indigo-600'>{isInfluencerWithdrawal(row) ? 'Influencer' : 'Organizer'}</span>
+						{Boolean(row.event?.title || (row.metadata?.eventTitle as string)) ? (
+							<>
+								<span className='text-slate-300'>•</span>
+								<span className='text-xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded'>
+									{row.event?.title || (row.metadata?.eventTitle as string)}
+								</span>
+							</>
+						) : (
+							<>
+								<span className='text-slate-300'>•</span>
+								<span className='text-xs text-slate-400'>All Events</span>
+							</>
+						)}
+					</div>
 					<p className='text-xs text-slate-500'>{row.organization?.contactEmail ?? row.requestedByEmail ?? 'No email'}</p>
 				</div>
 			),
-			searchValue: (row) => `${row.organization?.name ?? ''} ${row.organization?.contactEmail ?? ''}`,
+			searchValue: (row) => `${row.organization?.name ?? ''} ${row.organization?.contactEmail ?? ''} ${row.event?.title ?? ''}`,
 			sortValue: (row) => row.organization?.name ?? '',
 		},
 		{
@@ -216,6 +231,7 @@ export function WithdrawalsPage() {
 						<div className='grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2'>
 							<Detail label='Payee type' value={isInfluencerWithdrawal(selected) ? 'Influencer' : 'Organizer'} />
 							<Detail label='Payee' value={selected.organization?.name ?? 'Unknown'} />
+							<Detail label='Attributed event' value={selected.event?.title || (selected.metadata?.eventTitle as string) || 'All Events (Org-wide)'} />
 							<Detail label='Requested by' value={selected.requestedByEmail ?? 'Unknown'} />
 							<Detail label='Withdrawal type' value={withdrawalTypeLabel(selected)} />
 							<Detail label='Available at request' value={currency(selected.availableBalanceSnapshot, selected.currency)} />

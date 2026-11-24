@@ -23,6 +23,10 @@ export type WithdrawalRequest = {
 		organizerUsername?: string | null;
 		contactEmail?: string | null;
 	};
+	event?: {
+		id: string;
+		title: string;
+	} | null;
 	sourceEntryIds?: string[] | null;
 	metadata?: Record<string, unknown> | null;
 	createdAt: string;
