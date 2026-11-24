@@ -71,7 +71,7 @@ export function OrdersPage() {
 	const [reconciliationResult, setReconciliationResult] = useState<StripeReconciliationResult | null>(null);
 	const [reassigning, setReassigning] = useState<TicketOrderRow | null>(null);
 	const [reassignForm, setReassignForm] = useState({ fullName: '', email: '', sendEmail: true });
-	const { data: rows = [] } = useOrders(statusFilter);
+	const { data: rows = [], isLoading, error, refetch } = useOrders(statusFilter);
 	const reconcile = useReconcilePendingStripeOrders();
 	const reassign = useReassignTicketOrder();
 	const toast = useToast();
@@ -112,91 +112,115 @@ export function OrdersPage() {
 				}
 			/>
 
-			<DataTable
-				rows={rows}
-				columns={columns}
-				searchPlaceholder='Search orders by ID, customer, event, or status'
-				filters={
-					<select
-						value={statusFilter}
-						onChange={(event) => setStatusFilter(event.target.value)}
-						className='rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-secondary'>
-						<option value='all'>All statuses</option>
-						<option value='paid'>Paid</option>
-						<option value='pending'>Pending</option>
-						<option value='refunded'>Refunded</option>
-						<option value='cancelled'>Cancelled</option>
-					</select>
-				}
-				actions={<span className='text-sm text-slate-500'>{rows.length} orders</span>}
-			/>
+			{isLoading ? (
+				<div className='flex min-h-[260px] items-center justify-center rounded-2xl border border-slate-100 bg-white p-8'>
+					<div className='flex items-center gap-3 text-sm text-slate-500'>
+						<LoaderCircle size={20} className='animate-spin text-secondary' />
+						Loading orders and tickets...
+					</div>
+				</div>
+			) : error ? (
+				<div className='rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700'>
+					<p className='font-semibold'>Unable to load orders and tickets.</p>
+					<p className='mt-1 text-xs text-rose-600'>
+						{error instanceof Error ? error.message : 'An error occurred while fetching ticket orders.'}
+					</p>
+					<button
+						type='button'
+						onClick={() => refetch()}
+						className='mt-3 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700'>
+						Retry
+					</button>
+				</div>
+			) : (
+				<>
+					<DataTable
+						rows={rows}
+						columns={columns}
+						searchPlaceholder='Search orders by ID, customer, event, or status'
+						filters={
+							<select
+								value={statusFilter}
+								onChange={(event) => setStatusFilter(event.target.value)}
+								className='rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-secondary'>
+								<option value='all'>All statuses</option>
+								<option value='paid'>Paid</option>
+								<option value='pending'>Pending</option>
+								<option value='refunded'>Refunded</option>
+								<option value='cancelled'>Cancelled</option>
+							</select>
+						}
+						actions={<span className='text-sm text-slate-500'>{rows.length} orders</span>}
+					/>
 
-			<div className='grid gap-4'>
-				{rows.map((order) => (
-					<article key={order.id} className='card p-5'>
-						<div className='flex flex-col justify-between gap-4 md:flex-row md:items-start'>
-							<div>
-								<p className='text-sm font-semibold uppercase text-secondary'>
-									{order.organization?.name ?? 'Vendor'} · {order.referralCode?.code ?? 'Direct sale'}
-								</p>
-								<h3 className='mt-1 text-lg font-semibold text-slate-950'>{order.event?.title ?? 'Ticket order'}</h3>
-								<p className='mt-1 text-sm text-slate-500'>
-									{order.customerName} · {order.customerEmail}
-								</p>
-							</div>
-							<div className='flex items-center gap-3'>
-								<span className='badge bg-primary-10 text-primary'>{order.status}</span>
-								{order.checkoutUrl ? (
-									<a
-										href={order.checkoutUrl}
-										target='_blank'
-										rel='noreferrer'
-										className='inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50'>
-										<ExternalLink size={15} />
-										Checkout
-									</a>
-								) : null}
-								{order.status === 'paid' ? <button type='button' onClick={() => { setReassigning(order); setReassignForm({ fullName: order.customerName, email: order.customerEmail, sendEmail: true }); }} className='inline-flex items-center gap-2 rounded-lg border border-secondary px-3 py-2 text-sm font-medium text-secondary hover:bg-blue-50'>Reassign ticket</button> : null}
-							</div>
-						</div>
+					<div className='grid gap-4'>
+						{rows.map((order) => (
+							<article key={order.id} className='card p-5'>
+								<div className='flex flex-col justify-between gap-4 md:flex-row md:items-start'>
+									<div>
+										<p className='text-sm font-semibold uppercase text-secondary'>
+											{order.organization?.name ?? 'Vendor'} · {order.referralCode?.code ?? 'Direct sale'}
+										</p>
+										<h3 className='mt-1 text-lg font-semibold text-slate-950'>{order.event?.title ?? 'Ticket order'}</h3>
+										<p className='mt-1 text-sm text-slate-500'>
+											{order.customerName} · {order.customerEmail}
+										</p>
+									</div>
+									<div className='flex items-center gap-3'>
+										<span className='badge bg-primary-10 text-primary'>{order.status}</span>
+										{order.checkoutUrl ? (
+											<a
+												href={order.checkoutUrl}
+												target='_blank'
+												rel='noreferrer'
+												className='inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50'>
+												<ExternalLink size={15} />
+												Checkout
+											</a>
+										) : null}
+										{order.status === 'paid' ? <button type='button' onClick={() => { setReassigning(order); setReassignForm({ fullName: order.customerName, email: order.customerEmail, sendEmail: true }); }} className='inline-flex items-center gap-2 rounded-lg border border-secondary px-3 py-2 text-sm font-medium text-secondary hover:bg-blue-50'>Reassign ticket</button> : null}
+									</div>
+								</div>
 
-						<div className='mt-5 grid gap-3 md:grid-cols-2'>
-							<div className='rounded-lg border border-slate-100 bg-slate-50 p-4'>
-								<p className='inline-flex items-center gap-2 text-sm font-semibold text-slate-900'>
-									<ReceiptText size={16} />
-									Order Items
-								</p>
-								<div className='mt-3 space-y-2'>
-									{order.items?.map((item) => (
-										<div key={item.id} className='flex justify-between text-sm text-slate-600'>
-											<span>{item.quantity}x {item.ticketName}</span>
-											<span>{currency(Number(item.lineTotal))}</span>
+								<div className='mt-5 grid gap-3 md:grid-cols-2'>
+									<div className='rounded-lg border border-slate-100 bg-slate-50 p-4'>
+										<p className='inline-flex items-center gap-2 text-sm font-semibold text-slate-900'>
+											<ReceiptText size={16} />
+											Order Items
+										</p>
+										<div className='mt-3 space-y-2'>
+											{order.items?.map((item) => (
+												<div key={item.id} className='flex justify-between text-sm text-slate-600'>
+													<span>{item.quantity}x {item.ticketName}</span>
+													<span>{currency(Number(item.lineTotal))}</span>
+												</div>
+											))}
 										</div>
-									))}
-								</div>
-							</div>
+									</div>
 
-							<div className='rounded-lg border border-slate-100 bg-slate-50 p-4'>
-								<p className='inline-flex items-center gap-2 text-sm font-semibold text-slate-900'>
-									<Ticket size={16} />
-									Issued Tickets
-								</p>
-								<div className='mt-3 flex flex-wrap gap-2'>
-									{order.tickets?.length ? (
-										order.tickets.map((ticket) => (
-											<span key={ticket.id} className='rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700'>
-												{ticket.code}
-											</span>
-										))
-									) : (
-										<p className='text-sm text-slate-500'>Tickets issue automatically after payment confirmation.</p>
-									)}
+									<div className='rounded-lg border border-slate-100 bg-slate-50 p-4'>
+										<p className='inline-flex items-center gap-2 text-sm font-semibold text-slate-900'>
+											<Ticket size={16} />
+											Issued Tickets
+										</p>
+										<div className='mt-3 flex flex-wrap gap-2'>
+											{order.tickets?.length ? (
+												order.tickets.map((ticket) => (
+													<span key={ticket.id} className='rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700'>
+														{ticket.code}
+													</span>
+												))
+											) : (
+												<p className='text-sm text-slate-500'>Tickets issue automatically after payment confirmation.</p>
+											)}
+										</div>
+									</div>
 								</div>
-							</div>
-						</div>
-					</article>
-				))}
-			</div>
+							</article>
+						))}
+					</div>
+				</>
+			)}
 
 			{reconciliationResult ? (
 				<div className='fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4' role='dialog' aria-modal='true' aria-labelledby='reconciliation-title'>
