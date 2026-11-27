@@ -8,6 +8,7 @@ import {
 	ReceiptText,
 	Ticket,
 	UsersRound,
+	X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -24,6 +25,7 @@ import type { Event, TicketType } from '@/features/ticketing/api';
 import { authStore } from '@/lib/auth-store';
 import { Role } from '@/lib/roles';
 import { currency, formatDate } from '@/lib/utils';
+import { dateTimeLocalToIso, formatDateTimeLocal } from '@/lib/timezones';
 
 type MerchItem = {
 	type?: string;
@@ -161,30 +163,239 @@ function AdminEventEditor({ event }: { event: Event }) {
 	const { push } = useToast();
 	const update = useUpdateEvent();
 	const [open, setOpen] = useState(false);
-	const [form, setForm] = useState({ title: event.title, description: event.description || '', venue: event.venue || '', city: event.city || '', state: event.state || '', country: event.country || '', startsAt: event.startsAt.slice(0, 16), endsAt: event.endsAt?.slice(0, 16) || '' });
+	const [form, setForm] = useState({
+		title: event.title,
+		description: event.description || '',
+		venue: event.venue || '',
+		city: event.city || '',
+		state: event.state || '',
+		country: event.country || '',
+		startsAt: formatDateTimeLocal(event.startsAt, event.timezone),
+		endsAt: formatDateTimeLocal(event.endsAt, event.timezone),
+	});
 	const [images, setImages] = useState({ landscape: event.coverImageUrl || '', portrait: event.portraitImageUrl || '' });
-	const [tickets, setTickets] = useState((event.ticketTypes || []).map(ticket => ({ id: ticket.id, name: ticket.name, price: String(ticket.price), quantity: String(ticket.quantity) })));
-	const save = async () => { try {
-		const nextStartsAt = new Date(form.startsAt).toISOString();
-		const nextEndsAt = form.endsAt ? new Date(form.endsAt).toISOString() : undefined;
-		const payload = { ...form, ...(nextStartsAt !== event.startsAt ? { startsAt: nextStartsAt } : {}), ...(nextEndsAt !== (event.endsAt || undefined) ? { endsAt: nextEndsAt } : {}), coverImageUrl: images.landscape || undefined, portraitImageUrl: images.portrait || undefined, ticketTypes: tickets.map(ticket => ({ id: ticket.id, name: ticket.name, price: Number(ticket.price), quantity: Number(ticket.quantity) })) };
-		delete (payload as { startsAt?: string }).startsAt;
-		delete (payload as { endsAt?: string }).endsAt;
-		const datePayload = { ...payload, ...(nextStartsAt !== event.startsAt ? { startsAt: nextStartsAt } : {}), ...(nextEndsAt !== (event.endsAt || undefined) ? { endsAt: nextEndsAt } : {}) };
-		await update.mutateAsync({ id: event.id, payload: datePayload }); setOpen(false); push({ title: 'Event updated', description: 'The change was saved and audited.' });
-	} catch (error) { push({ title: 'Update failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'error' }); } };
-	return <>
-		<button type='button' onClick={() => setOpen(true)} className='inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white'><Pencil size={15} />Edit event</button>
-		<Modal open={open} onClose={() => setOpen(false)} title='Edit event (admin)' description='Changes are validated and recorded in the audit log.' footer={<><button type='button' onClick={() => setOpen(false)} className='rounded-xl border px-4 py-2 text-sm'>Cancel</button><button type='button' onClick={() => void save()} disabled={update.isPending} className='rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white'>{update.isPending ? 'Saving...' : 'Save changes'}</button></>}>
-			<div className='max-h-[65vh] space-y-4 overflow-y-auto pr-1'>
-				{(['title','venue','city','state','country'] as const).map(key => <label key={key} className='block text-sm font-medium capitalize'>{key}<input value={form[key]} onChange={e => setForm(v => ({ ...v, [key]: e.target.value }))} className='mt-1 w-full rounded-lg border border-slate-200 px-3 py-2' /></label>)}
-				<label className='block text-sm font-medium'>Description<textarea value={form.description} onChange={e => setForm(v => ({ ...v, description: e.target.value }))} className='mt-1 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2' /></label>
-				<div className='grid gap-3 sm:grid-cols-2'><label className='text-sm font-medium'>Starts<input type='datetime-local' value={form.startsAt} onChange={e => setForm(v => ({ ...v, startsAt: e.target.value }))} className='mt-1 w-full rounded-lg border border-slate-200 px-3 py-2' /></label><label className='text-sm font-medium'>Ends<input type='datetime-local' value={form.endsAt} onChange={e => setForm(v => ({ ...v, endsAt: e.target.value }))} className='mt-1 w-full rounded-lg border border-slate-200 px-3 py-2' /></label></div>
-				<div><p className='mb-2 text-sm font-semibold'>Ticket types</p><div className='space-y-2'>{tickets.map((ticket, index) => <div key={ticket.id} className='grid gap-2 sm:grid-cols-[1fr_110px_110px]'><input value={ticket.name} onChange={e => setTickets(v => v.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} className='rounded-lg border border-slate-200 px-3 py-2 text-sm' /><input type='number' min='0' step='0.01' value={ticket.price} onChange={e => setTickets(v => v.map((item, i) => i === index ? { ...item, price: e.target.value } : item))} className='rounded-lg border border-slate-200 px-3 py-2 text-sm' /><input type='number' min='0' value={ticket.quantity} onChange={e => setTickets(v => v.map((item, i) => i === index ? { ...item, quantity: e.target.value } : item))} className='rounded-lg border border-slate-200 px-3 py-2 text-sm' /></div>)}</div></div>
-				<div className='grid gap-3 sm:grid-cols-2'>{([['landscape','Landscape image'],['portrait','Portrait image']] as const).map(([key,label]) => <div key={key}><p className='mb-1 text-sm font-semibold'>{label}</p>{images[key] ? <div className='relative'><img src={images[key]} alt='' className='h-32 w-full rounded-lg object-cover' /><button type='button' onClick={() => setImages(v => ({ ...v, [key]: '' }))} className='absolute right-2 top-2 rounded bg-rose-600 px-2 py-1 text-xs font-semibold text-white'>Delete</button></div> : <FileUpload label={`Upload ${key}`} onUploadComplete={(url) => setImages(v => ({ ...v, [key]: url }))} />}</div>)}</div>
-			</div>
-		</Modal>
-	</>;
+	const [tickets, setTickets] = useState(
+		(event.ticketTypes || []).map(ticket => ({
+			id: ticket.id,
+			name: ticket.name,
+			price: String(ticket.price),
+			quantity: String(ticket.quantity),
+			salesEndAt: formatDateTimeLocal(ticket.salesEndAt, event.timezone),
+		}))
+	);
+
+	const openEditor = () => {
+		setForm({
+			title: event.title,
+			description: event.description || '',
+			venue: event.venue || '',
+			city: event.city || '',
+			state: event.state || '',
+			country: event.country || '',
+			startsAt: formatDateTimeLocal(event.startsAt, event.timezone),
+			endsAt: formatDateTimeLocal(event.endsAt, event.timezone),
+		});
+		setImages({ landscape: event.coverImageUrl || '', portrait: event.portraitImageUrl || '' });
+		setTickets(
+			(event.ticketTypes || []).map(ticket => ({
+				id: ticket.id,
+				name: ticket.name,
+				price: String(ticket.price),
+				quantity: String(ticket.quantity),
+				salesEndAt: formatDateTimeLocal(ticket.salesEndAt, event.timezone),
+			}))
+		);
+		setOpen(true);
+	};
+
+	const save = async () => {
+		try {
+			const nextStartsAt = form.startsAt ? dateTimeLocalToIso(form.startsAt, event.timezone) : event.startsAt;
+			const nextEndsAt = form.endsAt ? dateTimeLocalToIso(form.endsAt, event.timezone) : undefined;
+			const payload = {
+				...form,
+				...(nextStartsAt && nextStartsAt !== event.startsAt ? { startsAt: nextStartsAt } : {}),
+				...(nextEndsAt !== (event.endsAt || undefined) ? { endsAt: nextEndsAt } : {}),
+				coverImageUrl: images.landscape || undefined,
+				portraitImageUrl: images.portrait || undefined,
+				ticketTypes: tickets.map(ticket => ({
+					id: ticket.id,
+					name: ticket.name,
+					price: Number(ticket.price),
+					quantity: Number(ticket.quantity),
+					salesEndAt: ticket.salesEndAt ? dateTimeLocalToIso(ticket.salesEndAt, event.timezone) : null,
+				})),
+			};
+			delete (payload as { startsAt?: string }).startsAt;
+			delete (payload as { endsAt?: string }).endsAt;
+			const datePayload = {
+				...payload,
+				...(nextStartsAt && nextStartsAt !== event.startsAt ? { startsAt: nextStartsAt } : {}),
+				...(nextEndsAt !== (event.endsAt || undefined) ? { endsAt: nextEndsAt } : {}),
+			};
+			await update.mutateAsync({ id: event.id, payload: datePayload });
+			setOpen(false);
+			push({ title: 'Event updated', description: 'The change was saved and audited.' });
+		} catch (error) {
+			push({ title: 'Update failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'error' });
+		}
+	};
+
+	return (
+		<>
+			<button
+				type='button'
+				onClick={openEditor}
+				className='inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white'>
+				<Pencil size={15} />
+				Edit event
+			</button>
+			<Modal
+				open={open}
+				onClose={() => setOpen(false)}
+				title='Edit event (admin)'
+				description='Changes are validated and recorded in the audit log.'
+				footer={
+					<>
+						<button type='button' onClick={() => setOpen(false)} className='rounded-xl border px-4 py-2 text-sm'>
+							Cancel
+						</button>
+						<button
+							type='button'
+							onClick={() => void save()}
+							disabled={update.isPending}
+							className='rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white'>
+							{update.isPending ? 'Saving...' : 'Save changes'}
+						</button>
+					</>
+				}>
+				<div className='max-h-[65vh] space-y-4 overflow-y-auto pr-1'>
+					{(['title', 'venue', 'city', 'state', 'country'] as const).map(key => (
+						<label key={key} className='block text-sm font-medium capitalize'>
+							{key}
+							<input
+								value={form[key]}
+								onChange={e => setForm(v => ({ ...v, [key]: e.target.value }))}
+								className='mt-1 w-full rounded-lg border border-slate-200 px-3 py-2'
+							/>
+						</label>
+					))}
+					<label className='block text-sm font-medium'>
+						Description
+						<textarea
+							value={form.description}
+							onChange={e => setForm(v => ({ ...v, description: e.target.value }))}
+							className='mt-1 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2'
+						/>
+					</label>
+					<div className='grid gap-3 sm:grid-cols-2'>
+						<label className='text-sm font-medium'>
+							Starts ({event.timezone || 'US Time'})
+							<input
+								type='datetime-local'
+								value={form.startsAt}
+								onChange={e => setForm(v => ({ ...v, startsAt: e.target.value }))}
+								className='mt-1 w-full rounded-lg border border-slate-200 px-3 py-2'
+							/>
+						</label>
+						<label className='text-sm font-medium'>
+							Ends ({event.timezone || 'US Time'})
+							<input
+								type='datetime-local'
+								value={form.endsAt}
+								onChange={e => setForm(v => ({ ...v, endsAt: e.target.value }))}
+								className='mt-1 w-full rounded-lg border border-slate-200 px-3 py-2'
+							/>
+						</label>
+					</div>
+					<div>
+						<div className='mb-2 flex items-center justify-between'>
+							<p className='text-sm font-semibold'>Ticket types</p>
+							<span className='rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600'>
+								Timezone: {event.timezone || 'America/New_York'}
+							</span>
+						</div>
+						<div className='hidden text-[11px] font-semibold text-slate-500 sm:grid sm:grid-cols-[1fr_80px_80px_175px_auto] gap-2 pb-1'>
+							<span>Name</span>
+							<span>Price ($)</span>
+							<span>Qty</span>
+							<span>Sales End ({event.timezone ? event.timezone.split('/').pop()?.replace(/_/g, ' ') : 'US'})</span>
+							<span></span>
+						</div>
+						<div className='space-y-2'>
+							{tickets.map((ticket, index) => (
+								<div key={ticket.id} className='grid gap-2 sm:grid-cols-[1fr_80px_80px_175px_auto] items-center'>
+									<input
+										value={ticket.name}
+										placeholder='Ticket Name'
+										onChange={e => setTickets(v => v.map((item, i) => (i === index ? { ...item, name: e.target.value } : item)))}
+										className='rounded-lg border border-slate-200 px-3 py-2 text-sm'
+									/>
+									<input
+										type='number'
+										min='0'
+										step='0.01'
+										placeholder='Price'
+										value={ticket.price}
+										onChange={e => setTickets(v => v.map((item, i) => (i === index ? { ...item, price: e.target.value } : item)))}
+										className='rounded-lg border border-slate-200 px-3 py-2 text-sm'
+									/>
+									<input
+										type='number'
+										min='0'
+										placeholder='Qty'
+										value={ticket.quantity}
+										onChange={e => setTickets(v => v.map((item, i) => (i === index ? { ...item, quantity: e.target.value } : item)))}
+										className='rounded-lg border border-slate-200 px-3 py-2 text-sm'
+									/>
+									<input
+										type='datetime-local'
+										title={`Sales end date & time in ${event.timezone || 'US Time'}`}
+										value={ticket.salesEndAt}
+										onChange={e => setTickets(v => v.map((item, i) => (i === index ? { ...item, salesEndAt: e.target.value } : item)))}
+										className='w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-primary'
+									/>
+									{ticket.salesEndAt ? (
+										<button
+											type='button'
+											title='Clear expiry (sales end when event ends)'
+											onClick={() => setTickets(v => v.map((item, i) => (i === index ? { ...item, salesEndAt: '' } : item)))}
+											className='inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600'>
+											<X size={15} />
+										</button>
+									) : (
+										<span className='inline-flex h-8 w-8 items-center justify-center text-xs text-slate-300' title='No expiry date set'>
+											—
+										</span>
+									)}
+								</div>
+							))}
+						</div>
+					</div>
+					<div className='grid gap-3 sm:grid-cols-2'>
+						{([['landscape', 'Landscape image'], ['portrait', 'Portrait image']] as const).map(([key, label]) => (
+							<div key={key}>
+								<p className='mb-1 text-sm font-semibold'>{label}</p>
+								{images[key] ? (
+									<div className='relative'>
+										<img src={images[key]} alt='' className='h-32 w-full rounded-lg object-cover' />
+										<button
+											type='button'
+											onClick={() => setImages(v => ({ ...v, [key]: '' }))}
+											className='absolute right-2 top-2 rounded bg-rose-600 px-2 py-1 text-xs font-semibold text-white'>
+											Delete
+										</button>
+									</div>
+								) : (
+									<FileUpload label={`Upload ${key}`} onUploadComplete={url => setImages(v => ({ ...v, [key]: url }))} />
+								)}
+							</div>
+						))}
+					</div>
+				</div>
+			</Modal>
+		</>
+	);
 }
 
 function EventSlugEditor({ event }: { event: Event }) {

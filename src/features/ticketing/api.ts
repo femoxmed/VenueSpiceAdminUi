@@ -52,6 +52,8 @@ export type TicketType = {
 	quantity: number;
 	quantitySold: number;
 	status: string;
+	salesStartAt?: string | null;
+	salesEndAt?: string | null;
 };
 
 export type Event = {
@@ -192,8 +194,11 @@ export type CreateEventPayload = {
 	portraitImageUrl?: string;
 	status?: 'draft' | 'published' | 'cancelled' | 'archived';
 	ticketTypes?: Array<{
+		id?: string;
 		name: string;
 		price: number;
 		quantity: number;
+		salesStartAt?: string | null;
+		salesEndAt?: string | null;
 	}>;
 };
